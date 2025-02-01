@@ -1,5 +1,9 @@
 #include "water_simulator/renderer/shader.h"
 #include "water_simulator/renderer/gl_error_macro.h"
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
 #include <string>
 
 namespace water_simulator::renderer {
@@ -73,5 +77,16 @@ GLuint Shader::load_fragment_shader(std::string fragment_source) {
   // else...
   return fragment_shader;
 };
+
+std::string read_file(const std::string &file_path) {
+  std::ifstream file(file_path);
+  if (!file) {
+    throw std::runtime_error("Could not open file: " + file_path);
+  }
+  // else...
+  std::stringstream buffer;
+  buffer << file.rdbuf(); // Read the entire file into the stringstream buffer
+  return buffer.str();    // Return the string from the buffer
+}
 
 } // namespace water_simulator::renderer

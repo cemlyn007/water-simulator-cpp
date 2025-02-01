@@ -1,7 +1,6 @@
 #ifndef WATER_SIMULATOR_RENDERER_SHADER_H_
 #define WATER_SIMULATOR_RENDERER_SHADER_H_
 #include <GL/glew.h>
-#include <GLFW/glfw3.h>
 #include <stdlib.h>
 #include <string>
 
@@ -23,6 +22,8 @@ private:
   GLuint load_vertex_shader(std::string vertex_source_code);
   GLuint load_fragment_shader(std::string fragment_source);
 };
+
+std::string read_file(const std::string &file_path);
 
 } // namespace water_simulator::renderer
 #endif

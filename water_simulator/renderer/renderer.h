@@ -35,7 +35,6 @@ private:
                                     int mods);
   static void cursor_position_callback(GLFWwindow *window, double xpos,
                                        double ypos);
-  std::string read_shader(const std::string &file_path);
 };
 
 } // namespace water_simulator::renderer

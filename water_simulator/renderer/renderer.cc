@@ -1,5 +1,6 @@
 #include "water_simulator/renderer/renderer.h"
 #include "water_simulator/renderer/gl_error_macro.h"
+#include "water_simulator/renderer/shader.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <cstdlib>
@@ -38,8 +39,8 @@ void terminate() {
 
 Renderer::Renderer(int window_width, int window_height)
     : _window(create_window(window_width, window_height)),
-      _shader(read_shader(SHADER_VERTEX_FILE_PATH),
-              read_shader(SHADER_FRAGMENT_FILE_PATH)),
+      _shader(read_file(SHADER_VERTEX_FILE_PATH),
+              read_file(SHADER_FRAGMENT_FILE_PATH)),
       _mouse_click(false), _escape_pressed(false) {}
 
 Renderer::~Renderer() { glfwDestroyWindow(_window); };
@@ -104,14 +105,4 @@ void Renderer::cursor_position_callback(GLFWwindow *window, double xpos,
   (renderer->_mouse_position_in_pixels[1]) = ypos;
 }
 
-std::string Renderer::read_shader(const std::string &file_path) {
-  std::ifstream file(file_path);
-  if (!file) {
-    throw std::runtime_error("Could not open file: " + file_path);
-  }
-  // else...
-  std::stringstream buffer;
-  buffer << file.rdbuf(); // Read the entire file into the stringstream buffer
-  return buffer.str();    // Return the string from the buffer
-}
 } // namespace water_simulator::renderer
