@@ -1,11 +1,13 @@
 #include "water_simulator/renderer/renderer.h"
+#include "water_simulator/renderer/algebra.h"
 #include "water_simulator/renderer/gl_error_macro.h"
 #include "water_simulator/renderer/shader.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <cstdlib>
-#include <fstream>
 #include <iostream>
+#include <math.h>
+#include <mdspan>
 #include <stdexcept>
 
 static const char *SHADER_VERTEX_FILE_PATH =
@@ -41,7 +43,14 @@ Renderer::Renderer(int window_width, int window_height)
     : _window(create_window(window_width, window_height)),
       _shader(read_file(SHADER_VERTEX_FILE_PATH),
               read_file(SHADER_FRAGMENT_FILE_PATH)),
-      _mouse_click(false), _escape_pressed(false) {}
+      _mouse_click(false), _escape_pressed(false), _light() {
+  float aspect = static_cast<float>(_framebuffer_width) /
+                 static_cast<float>(_framebuffer_height);
+  _light.set_projection(perspective((M_PI * 60) / 180, aspect, 0.01, 100.0));
+  _light.set_color({1.0, 1.0, 1.0});
+  _light.set_view(look_at({2.5, 3.54, 2.5}, {1.2, 4.0, 2.0}, {0.0, 1.0, 0.0}));
+  _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), {1.2, 4.0, 2.0}));
+}
 
 Renderer::~Renderer() { glfwDestroyWindow(_window); };
 
@@ -49,6 +58,7 @@ void Renderer::render() {
   glfwMakeContextCurrent(_window);
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
   _shader.use();
+  _light.draw();
   GL_CALL(glfwSwapBuffers(_window));
   GL_CALL(glfwPollEvents());
 }
@@ -72,6 +82,7 @@ GLFWwindow *Renderer::create_window(int width, int height) {
         std::string("Error initializing glew: ") +
         reinterpret_cast<const char *>(glewGetErrorString(error)));
   }
+  glfwGetFramebufferSize(window, &_framebuffer_width, &_framebuffer_height);
   glfwSetWindowUserPointer(window, this);
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
   glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);

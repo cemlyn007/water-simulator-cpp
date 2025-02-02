@@ -1,6 +1,6 @@
-#ifndef WATER_SIMULATOR_RENDERER_SHADER_H_
-#define WATER_SIMULATOR_RENDERER_SHADER_H_
+#pragma once
 #include <GL/glew.h>
+#include <array>
 #include <stdlib.h>
 #include <string>
 
@@ -14,7 +14,13 @@ public:
   Shader(std::string vertex_source_code, std::string fragment_source_code);
   ~Shader();
   void use();
-  void set_uniform(std::string name, float x, float y);
+  void unuse();
+  void set_uniform_vector(const std::string &name,
+                          const std::array<float, 2> vector);
+  void set_uniform_vector(const std::string &name,
+                          const std::array<float, 3> vector);
+  void set_uniform_matrix(const std::string &name,
+                          const std::array<float, 16> matrix);
 
 private:
   GLuint load_program(std::string vertex_source_code,
@@ -26,4 +32,3 @@ private:
 std::string read_file(const std::string &file_path);
 
 } // namespace water_simulator::renderer
-#endif

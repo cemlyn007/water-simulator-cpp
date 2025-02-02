@@ -262,7 +262,7 @@
     "@@toolchains_llvm+//toolchain/extensions:llvm.bzl%llvm": {
       "general": {
         "bzlTransitiveDigest": "2eLMaPh4QKrn3wPljYBu5jSkkp9DfCf4yGKTR9lBN3c=",
-        "usagesDigest": "Z/tbQu7dpnAzsv6vqM7C/lBP+/5VypOy/jULdfvQmt4=",
+        "usagesDigest": "ogY3qIlh8ujN14RIEJJaG9PIiQbKPQZoAER43B1xeYk=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -300,7 +300,9 @@
               "coverage_link_flags": {},
               "cxx_builtin_include_directories": {},
               "cxx_flags": {},
-              "cxx_standard": {},
+              "cxx_standard": {
+                "": "c++23"
+              },
               "dbg_compile_flags": {},
               "exec_arch": "",
               "exec_os": "",

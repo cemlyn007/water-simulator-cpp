@@ -37,9 +37,24 @@ Shader::~Shader() { glDeleteProgram(_program); }
 
 void Shader::use() { GL_CALL(glUseProgram(_program)); }
 
-void Shader::set_uniform(std::string name, float x, float y) {
+void Shader::unuse() { GL_CALL(glUseProgram(0)); }
+
+void Shader::set_uniform_vector(const std::string &name,
+                                const std::array<float, 2> vector) {
   GLuint location = glGetUniformLocation(_program, name.c_str());
-  GL_CALL(glUniform2f(location, x, y););
+  GL_CALL(glUniform2fv(location, 1, vector.data()););
+}
+
+void Shader::set_uniform_vector(const std::string &name,
+                                const std::array<float, 3> vector) {
+  GLuint location = glGetUniformLocation(_program, name.c_str());
+  GL_CALL(glUniform3fv(location, 1, vector.data()););
+}
+
+void Shader::set_uniform_matrix(const std::string &name,
+                                const std::array<float, 16> matrix) {
+  GLuint location = glGetUniformLocation(_program, name.c_str());
+  GL_CALL(glUniformMatrix4fv(location, 1, GL_FALSE, matrix.data()););
 }
 
 GLuint Shader::load_vertex_shader(std::string vertex_source_code) {

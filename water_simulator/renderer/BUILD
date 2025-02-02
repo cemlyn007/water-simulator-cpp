@@ -24,11 +24,19 @@ cc_library(
     ],
     linkopts = opengl_linkopts,
     deps = [
+        ":algebra",
         ":gl_error_macro",
         ":shader",
+        "//water_simulator/renderer/entities:light",
         "@glew//:glew_static",
         "@glfw",
     ],
+)
+
+cc_library(
+    name = "algebra",
+    srcs = ["algebra.cc"],
+    hdrs = ["algebra.h"],
 )
 
 cc_library(
@@ -38,6 +46,19 @@ cc_library(
     linkopts = opengl_linkopts,
     deps = [
         ":gl_error_macro",
+        "@glew//:glew_static",
+        "@glfw",
+    ],
+)
+
+cc_library(
+    name = "shader_context_manager",
+    srcs = ["shader_context_manager.cc"],
+    hdrs = ["shader_context_manager.h"],
+    linkopts = opengl_linkopts,
+    deps = [
+        ":gl_error_macro",
+        ":shader",
         "@glew//:glew_static",
         "@glfw",
     ],

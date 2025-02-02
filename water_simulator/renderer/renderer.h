@@ -1,10 +1,9 @@
-#ifndef WATER_SIMULATOR_RENDERER_H_
-#define WATER_SIMULATOR_RENDERER_H_
+#pragma once
+#include "water_simulator/renderer/entities/light.h"
 #include "water_simulator/renderer/shader.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
-
 namespace water_simulator::renderer {
 
 void init();
@@ -18,6 +17,10 @@ private:
   double _mouse_position_in_pixels[2];
   bool _mouse_click;
   bool _escape_pressed;
+
+  int _framebuffer_width, _framebuffer_height;
+
+  entities::Light _light;
 
 public:
   Renderer(int window_width, int window_height);
@@ -38,5 +41,3 @@ private:
 };
 
 } // namespace water_simulator::renderer
-
-#endif
