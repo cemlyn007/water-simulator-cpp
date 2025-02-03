@@ -1,9 +1,8 @@
 #pragma once
 #include "water_simulator/renderer/entities/light.h"
 #include "water_simulator/renderer/shader.h"
-#include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <stdlib.h>
+
 namespace water_simulator::renderer {
 
 void init();

@@ -1,7 +1,5 @@
 #pragma once
 #include "water_simulator/renderer/shader.h"
-#include <GL/glew.h>
-#include <stdlib.h>
 
 namespace water_simulator::renderer {
 

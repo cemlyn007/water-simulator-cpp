@@ -1,6 +1,5 @@
 #include "water_simulator/renderer/gl_error_macro.h"
 #include <GL/glew.h>
-#include <GLFW/glfw3.h>
 
 namespace water_simulator::renderer {
 

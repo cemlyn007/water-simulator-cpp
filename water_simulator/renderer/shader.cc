@@ -1,6 +1,5 @@
 #include "water_simulator/renderer/shader.h"
 #include "water_simulator/renderer/gl_error_macro.h"
-#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>

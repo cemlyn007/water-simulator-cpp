@@ -3,12 +3,7 @@
 #include "water_simulator/renderer/gl_error_macro.h"
 #include "water_simulator/renderer/shader.h"
 #include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <cstdlib>
 #include <iostream>
-#include <math.h>
-#include <mdspan>
-#include <stdexcept>
 
 static const char *SHADER_VERTEX_FILE_PATH =
     "water_simulator/renderer/shaders/shader.vert";

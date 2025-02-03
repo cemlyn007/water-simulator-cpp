@@ -1,7 +1,6 @@
 #pragma once
 #include <GL/glew.h>
 #include <array>
-#include <stdlib.h>
 #include <string>
 
 namespace water_simulator::renderer {
