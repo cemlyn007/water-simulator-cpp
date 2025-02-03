@@ -14,9 +14,12 @@ private:
   GLFWwindow *_window;
   Shader _shader;
   double _mouse_position_in_pixels[2];
+  double _last_mouse_position_in_pixels[2];
+  double _mouse_position_change_in_pixels[2];
   bool _mouse_click;
   bool _escape_pressed;
 
+  float _camera_radians[2];
   int _framebuffer_width, _framebuffer_height;
 
   std::array<float, 3> _camera_position;

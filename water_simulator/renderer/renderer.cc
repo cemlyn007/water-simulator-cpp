@@ -42,6 +42,7 @@ Renderer::Renderer(int window_width, int window_height)
   on_aspect_change();
   _light.set_color({1.0, 1.0, 1.0});
   _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), {1.2, 4.0, 2.0}));
+  _camera_position = {5.0, 5.0, 5.0};
 }
 
 Renderer::~Renderer() { glfwDestroyWindow(_window); };
@@ -53,18 +54,32 @@ void Renderer::render() {
   _shader.use();
   _light.draw();
   GL_CALL(glfwSwapBuffers(_window));
+  _last_mouse_position_in_pixels[0] = _mouse_position_in_pixels[0];
+  _last_mouse_position_in_pixels[1] = _mouse_position_in_pixels[1];
   GL_CALL(glfwPollEvents());
+  _mouse_position_change_in_pixels[0] =
+      _mouse_position_in_pixels[0] - _last_mouse_position_in_pixels[0];
+  _mouse_position_change_in_pixels[1] =
+      _mouse_position_in_pixels[1] - _last_mouse_position_in_pixels[1];
 }
 
 void Renderer::on_aspect_change() {
   float aspect = static_cast<float>(_framebuffer_width) /
                  static_cast<float>(_framebuffer_height);
-  _light.set_projection(perspective((M_PI * 60) / 180, aspect, 0.01, 100.0));
+  _light.set_projection(perspective(radians(60), aspect, 0.01, 100.0));
 };
 
 void Renderer::update_camera() {
-  _camera_position = {2.5, 3.54, 2.5};
-  _light.set_view(look_at(_camera_position, {1.2, 4.0, 2.0}, {0.0, 1.0, 0.0}));
+  float camera_radius = norm(_camera_position);
+  _camera_radians[0] = std::fmod(
+      _camera_radians[0] + radians(_mouse_position_change_in_pixels[0]),
+      (2 * M_PI));
+  _camera_radians[1] = std::fmod(
+      _camera_radians[1] + radians(_mouse_position_change_in_pixels[1]),
+      (2 * M_PI));
+  _camera_position = update_orbit_camera_position(
+      _camera_radians[0], _camera_radians[1], camera_radius);
+  _light.set_view(look_at(_camera_position, {0.0, 0.0, 0.0}, {0.0, 1.0, 0.0}));
 };
 
 bool Renderer::should_close() {

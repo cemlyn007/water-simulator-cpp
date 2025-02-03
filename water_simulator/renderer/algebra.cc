@@ -26,6 +26,21 @@ void print(const std::array<std::array<float, 4>, 4> &matrix) {
   std::cout << std::endl;
 }
 
+float radians(float degrees) { return (degrees * M_PI) / 180.0; };
+
+float norm(std::array<float, 3> vector) {
+  return std::sqrt(std::pow(vector[0], 2) + std::pow(vector[1], 2) +
+                   std::pow(vector[2], 2));
+}
+
+std::array<float, 3> update_orbit_camera_position(float azimuth_radians,
+                                                  float elevation_radians,
+                                                  float radius) {
+  return {radius * std::cos(azimuth_radians) * std::cos(elevation_radians),
+          radius * std::sin(elevation_radians),
+          radius * std::sin(azimuth_radians) * std::cos(elevation_radians)};
+};
+
 std::array<float, 16> eye4d() {
   std::array<float, 16> result{};
   auto R_md = std::mdspan(result.data(), 4, 4);
