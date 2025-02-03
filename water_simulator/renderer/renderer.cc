@@ -41,7 +41,6 @@ Renderer::Renderer(int window_width, int window_height)
       _mouse_click(false), _escape_pressed(false), _light() {
   on_aspect_change();
   _light.set_color({1.0, 1.0, 1.0});
-  _light.set_view(look_at({2.5, 3.54, 2.5}, {1.2, 4.0, 2.0}, {0.0, 1.0, 0.0}));
   _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), {1.2, 4.0, 2.0}));
 }
 
@@ -50,6 +49,7 @@ Renderer::~Renderer() { glfwDestroyWindow(_window); };
 void Renderer::render() {
   glfwMakeContextCurrent(_window);
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
+  update_camera();
   _shader.use();
   _light.draw();
   GL_CALL(glfwSwapBuffers(_window));
@@ -60,6 +60,11 @@ void Renderer::on_aspect_change() {
   float aspect = static_cast<float>(_framebuffer_width) /
                  static_cast<float>(_framebuffer_height);
   _light.set_projection(perspective((M_PI * 60) / 180, aspect, 0.01, 100.0));
+};
+
+void Renderer::update_camera() {
+  _camera_position = {2.5, 3.54, 2.5};
+  _light.set_view(look_at(_camera_position, {1.2, 4.0, 2.0}, {0.0, 1.0, 0.0}));
 };
 
 bool Renderer::should_close() {

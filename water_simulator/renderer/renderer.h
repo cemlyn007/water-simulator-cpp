@@ -19,6 +19,8 @@ private:
 
   int _framebuffer_width, _framebuffer_height;
 
+  std::array<float, 3> _camera_position;
+
   entities::Light _light;
 
 public:
@@ -30,6 +32,7 @@ public:
 
 private:
   void on_aspect_change();
+  void update_camera();
 
   GLFWwindow *create_window(int width, int height);
   static void key_callback(GLFWwindow *window, int key, int scancode,

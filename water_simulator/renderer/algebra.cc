@@ -5,6 +5,10 @@
 
 namespace water_simulator::renderer {
 
+void print(const std::array<float, 3> &vector) {
+  std::cout << vector[0] << ", " << vector[1] << ", " << vector[2] << std::endl;
+}
+
 void print(const std::array<float, 16> &matrix) {
   for (const auto number : matrix) {
     std::cout << number << ", ";
