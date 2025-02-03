@@ -70,7 +70,8 @@ void Renderer::on_aspect_change() {
 };
 
 void Renderer::update_camera() {
-  float camera_radius = norm(_camera_position);
+  float camera_radius =
+      std::min(std::max(0.0, norm(_camera_position) + _scroll_offset), 25.0);
   _camera_radians[0] = std::fmod(
       _camera_radians[0] + radians(_mouse_position_change_in_pixels[0]),
       (2 * M_PI));
@@ -102,13 +103,14 @@ GLFWwindow *Renderer::create_window(int width, int height) {
         reinterpret_cast<const char *>(glewGetErrorString(error)));
   }
   glfwGetFramebufferSize(window, &_framebuffer_width, &_framebuffer_height);
+  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
   glfwSetWindowUserPointer(window, this);
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_TRUE);
   glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
   glfwSetKeyCallback(window, key_callback);
   glfwSetMouseButtonCallback(window, mouse_button_callback);
   glfwSetCursorPosCallback(window, cursor_position_callback);
-  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+  glfwSetScrollCallback(window, scroll_callback);
   return window;
 };
 
@@ -134,6 +136,13 @@ void Renderer::cursor_position_callback(GLFWwindow *window, double xpos,
       static_cast<Renderer *>(glfwGetWindowUserPointer(window));
   (renderer->_mouse_position_in_pixels[0]) = xpos;
   (renderer->_mouse_position_in_pixels[1]) = ypos;
+}
+
+void Renderer::scroll_callback(GLFWwindow *window, double xoffset,
+                               double yoffset) {
+  Renderer *renderer =
+      static_cast<Renderer *>(glfwGetWindowUserPointer(window));
+  (renderer->_scroll_offset) = yoffset;
 }
 
 void Renderer::framebuffer_size_callback(GLFWwindow *window, int width,

@@ -13,6 +13,7 @@ class Renderer {
 private:
   GLFWwindow *_window;
   Shader _shader;
+  double _scroll_offset;
   double _mouse_position_in_pixels[2];
   double _last_mouse_position_in_pixels[2];
   double _mouse_position_change_in_pixels[2];
@@ -44,6 +45,8 @@ private:
                                     int mods);
   static void cursor_position_callback(GLFWwindow *window, double xpos,
                                        double ypos);
+  static void scroll_callback(GLFWwindow *window, double xoffset,
+                              double yoffset);
   static void framebuffer_size_callback(GLFWwindow *window, int width,
                                         int height);
 };
