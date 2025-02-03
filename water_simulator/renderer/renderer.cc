@@ -39,9 +39,7 @@ Renderer::Renderer(int window_width, int window_height)
       _shader(read_file(SHADER_VERTEX_FILE_PATH),
               read_file(SHADER_FRAGMENT_FILE_PATH)),
       _mouse_click(false), _escape_pressed(false), _light() {
-  float aspect = static_cast<float>(_framebuffer_width) /
-                 static_cast<float>(_framebuffer_height);
-  _light.set_projection(perspective((M_PI * 60) / 180, aspect, 0.01, 100.0));
+  on_aspect_change();
   _light.set_color({1.0, 1.0, 1.0});
   _light.set_view(look_at({2.5, 3.54, 2.5}, {1.2, 4.0, 2.0}, {0.0, 1.0, 0.0}));
   _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), {1.2, 4.0, 2.0}));
@@ -57,6 +55,12 @@ void Renderer::render() {
   GL_CALL(glfwSwapBuffers(_window));
   GL_CALL(glfwPollEvents());
 }
+
+void Renderer::on_aspect_change() {
+  float aspect = static_cast<float>(_framebuffer_width) /
+                 static_cast<float>(_framebuffer_height);
+  _light.set_projection(perspective((M_PI * 60) / 180, aspect, 0.01, 100.0));
+};
 
 bool Renderer::should_close() {
   return glfwWindowShouldClose(_window) || _escape_pressed;
@@ -84,6 +88,7 @@ GLFWwindow *Renderer::create_window(int width, int height) {
   glfwSetKeyCallback(window, key_callback);
   glfwSetMouseButtonCallback(window, mouse_button_callback);
   glfwSetCursorPosCallback(window, cursor_position_callback);
+  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
   return window;
 };
 
@@ -109,6 +114,18 @@ void Renderer::cursor_position_callback(GLFWwindow *window, double xpos,
       static_cast<Renderer *>(glfwGetWindowUserPointer(window));
   (renderer->_mouse_position_in_pixels[0]) = xpos;
   (renderer->_mouse_position_in_pixels[1]) = ypos;
+}
+
+void Renderer::framebuffer_size_callback(GLFWwindow *window, int width,
+                                         int height) {
+  Renderer *renderer =
+      static_cast<Renderer *>(glfwGetWindowUserPointer(window));
+
+  glfwMakeContextCurrent(window);
+  glViewport(0, 0, width, height);
+  glfwGetFramebufferSize(window, &(renderer->_framebuffer_width),
+                         &(renderer->_framebuffer_height));
+  renderer->on_aspect_change();
 }
 
 } // namespace water_simulator::renderer

@@ -27,9 +27,10 @@ public:
 
   void render();
   bool should_close();
-  std::tuple<int, bool> get_selected_location();
 
 private:
+  void on_aspect_change();
+
   GLFWwindow *create_window(int width, int height);
   static void key_callback(GLFWwindow *window, int key, int scancode,
                            int action, int mods);
@@ -37,6 +38,8 @@ private:
                                     int mods);
   static void cursor_position_callback(GLFWwindow *window, double xpos,
                                        double ypos);
+  static void framebuffer_size_callback(GLFWwindow *window, int width,
+                                        int height);
 };
 
 } // namespace water_simulator::renderer
