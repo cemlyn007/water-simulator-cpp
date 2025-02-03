@@ -27,6 +27,7 @@ cc_library(
         ":algebra",
         ":gl_error_macro",
         ":shader",
+        "//water_simulator/renderer/entities:container",
         "//water_simulator/renderer/entities:light",
         "@glew//:glew_static",
         "@glfw",

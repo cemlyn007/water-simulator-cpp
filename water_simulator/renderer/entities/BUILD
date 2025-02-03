@@ -15,6 +15,21 @@ opengl_linkopts = select({
 })
 
 cc_library(
+    name = "container",
+    srcs = ["container.cc"],
+    hdrs = ["container.h"],
+    data = ["//water_simulator/renderer/shaders:simple"],
+    linkopts = opengl_linkopts,
+    deps = [
+        "//water_simulator/renderer:gl_error_macro",
+        "//water_simulator/renderer:shader",
+        "//water_simulator/renderer:shader_context_manager",
+        "@glew//:glew_static",
+        "@glfw",
+    ],
+)
+
+cc_library(
     name = "light",
     srcs = ["light.cc"],
     hdrs = ["light.h"],

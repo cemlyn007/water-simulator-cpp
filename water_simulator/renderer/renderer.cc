@@ -38,24 +38,49 @@ Renderer::Renderer(int window_width, int window_height)
     : _window(create_window(window_width, window_height)),
       _shader(read_file(SHADER_VERTEX_FILE_PATH),
               read_file(SHADER_FRAGMENT_FILE_PATH)),
-      _mouse_click(false), _escape_pressed(false), _light() {
+      _mouse_click(false), _escape_pressed(false), _light(),
+      _container((100.0 * 0.02) / 2.0, 0.02 * 2.0) {
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_CULL_FACE);
+  glEnable(GL_DEPTH_TEST);
+
   on_aspect_change();
+
+  std::array<float, 3> light_position = {1.2, 4.0, 2.0};
+
   _light.set_color({1.0, 1.0, 1.0});
-  _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), {1.2, 4.0, 2.0}));
-  _camera_position = {5.0, 5.0, 5.0};
+  _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), light_position));
+
+  _container.set_color({0.7, 0.7, 0.7});
+  _container.set_model(eye4d());
+
+  _container.set_light_color({1.0, 1.0, 1.0});
+  _container.set_light_position(light_position);
+
+  _camera_position = {2.5, 3.535534, 2.5};
+  _camera_radians[0] = 0.7853982;
+  _camera_radians[1] = 0.7853982;
+
+  update_camera();
 }
 
 Renderer::~Renderer() { glfwDestroyWindow(_window); };
 
 void Renderer::render() {
   glfwMakeContextCurrent(_window);
-  GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
+  GL_CALL(glViewport(0, 0, _framebuffer_width, _framebuffer_height));
+  GL_CALL(glClearColor(0.1, 0.1, 0.1, 1.0));
+  GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
   update_camera();
   _shader.use();
   _light.draw();
+  _container.draw();
   GL_CALL(glfwSwapBuffers(_window));
   _last_mouse_position_in_pixels[0] = _mouse_position_in_pixels[0];
   _last_mouse_position_in_pixels[1] = _mouse_position_in_pixels[1];
+  _scroll_offset = 0.0;
   GL_CALL(glfwPollEvents());
   _mouse_position_change_in_pixels[0] =
       _mouse_position_in_pixels[0] - _last_mouse_position_in_pixels[0];
@@ -66,7 +91,9 @@ void Renderer::render() {
 void Renderer::on_aspect_change() {
   float aspect = static_cast<float>(_framebuffer_width) /
                  static_cast<float>(_framebuffer_height);
-  _light.set_projection(perspective(radians(60), aspect, 0.01, 100.0));
+  auto projection = perspective(radians(60), aspect, 0.01, 100.0);
+  _light.set_projection(projection);
+  _container.set_projection(projection);
 };
 
 void Renderer::update_camera() {
@@ -80,7 +107,10 @@ void Renderer::update_camera() {
       (2 * M_PI));
   _camera_position = update_orbit_camera_position(
       _camera_radians[0], _camera_radians[1], camera_radius);
-  _light.set_view(look_at(_camera_position, {0.0, 0.0, 0.0}, {0.0, 1.0, 0.0}));
+  auto view = look_at(_camera_position, {0.0, 0.5, 0.0}, {0.0, 1.0, 0.0});
+  _light.set_view(view);
+  _container.set_view(view);
+  _container.set_view_position(_camera_position);
 };
 
 bool Renderer::should_close() {

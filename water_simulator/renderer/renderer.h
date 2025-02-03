@@ -1,4 +1,5 @@
 #pragma once
+#include "water_simulator/renderer/entities/container.h"
 #include "water_simulator/renderer/entities/light.h"
 #include "water_simulator/renderer/shader.h"
 #include <GLFW/glfw3.h>
@@ -26,6 +27,7 @@ private:
   std::array<float, 3> _camera_position;
 
   entities::Light _light;
+  entities::Container _container;
 
 public:
   Renderer(int window_width, int window_height);

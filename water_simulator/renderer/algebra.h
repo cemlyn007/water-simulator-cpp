@@ -3,7 +3,7 @@
 
 namespace water_simulator::renderer {
 
-void print(std::array<float, 3> vector);
+void print(const std::array<float, 3> &vector);
 
 void print(const std::array<float, 16> &matrix);
 

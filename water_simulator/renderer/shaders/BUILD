@@ -14,3 +14,11 @@ filegroup(
         "light_cube.vs",
     ],
 )
+
+filegroup(
+    name = "simple",
+    srcs = [
+        "simple.fs",
+        "simple.vs",
+    ],
+)
