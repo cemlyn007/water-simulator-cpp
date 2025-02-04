@@ -46,7 +46,6 @@ LINUX_HDRS = [
     "src/posix_time.h",
     "src/x11_platform.h",
     "src/posix_poll.h",
-    "src/null_joystick.h",
 ]
 
 LINUX_SRCS = [
@@ -58,7 +57,6 @@ LINUX_SRCS = [
     "src/x11_monitor.c",
     "src/x11_window.c",
     "src/posix_poll.c",
-    "src/null_joystick.c",
     "src/wl_init.c",
     "src/posix_module.c",
 ]
@@ -77,14 +75,14 @@ DARWIN_DEFINES = [
 DARWIN_HDRS = [
     "src/cocoa_joystick.h",
     "src/cocoa_platform.h",
-    "src/glx_context.h",
-    "src/nsgl_context.h",
-    "src/null_joystick.h",
     "src/posix_thread.h",
     "src/wl_platform.h",
+    "src/cocoa_time.h",
 ]
 
 DARWIN_SRCS = [
+    "src/glx_context.c",
+    "src/posix_module.c",
     "src/cocoa_time.c",
     "src/posix_thread.c",
     "src/cocoa_init.m",
@@ -111,6 +109,7 @@ COMMON_HDRS = [
     "src/mappings.h",
     "src/xkb_unicode.h",
     "src/null_platform.h",
+    "src/null_joystick.h",
 ]
 
 COMMON_SRCS = [
@@ -127,6 +126,7 @@ COMMON_SRCS = [
     "src/monitor.c",
     "src/window.c",
     "src/xkb_unicode.c",
+    "src/null_joystick.c",
 ]
 
 cc_library(
