@@ -99,12 +99,14 @@ void Renderer::on_aspect_change() {
 void Renderer::update_camera() {
   float camera_radius =
       std::min(std::max(0.0, norm(_camera_position) + _scroll_offset), 25.0);
-  _camera_radians[0] = std::fmod(
-      _camera_radians[0] + radians(_mouse_position_change_in_pixels[0]),
-      (2 * M_PI));
-  _camera_radians[1] = std::fmod(
-      _camera_radians[1] + radians(_mouse_position_change_in_pixels[1]),
-      (2 * M_PI));
+  if (_mouse_click) {
+    _camera_radians[0] = std::fmod(
+        _camera_radians[0] + radians(_mouse_position_change_in_pixels[0]),
+        (2 * M_PI));
+    _camera_radians[1] = std::fmod(
+        _camera_radians[1] + radians(_mouse_position_change_in_pixels[1]),
+        (2 * M_PI));
+  }
   _camera_position = update_orbit_camera_position(
       _camera_radians[0], _camera_radians[1], camera_radius);
   auto view = look_at(_camera_position, {0.0, 0.5, 0.0}, {0.0, 1.0, 0.0});
@@ -156,8 +158,8 @@ void Renderer::mouse_button_callback(GLFWwindow *window, int button, int action,
                                      int mods) {
   Renderer *renderer =
       static_cast<Renderer *>(glfwGetWindowUserPointer(window));
-  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    (renderer->_mouse_click) = true;
+  if (button == GLFW_MOUSE_BUTTON_LEFT)
+    (renderer->_mouse_click) = (action == GLFW_PRESS);
 }
 
 void Renderer::cursor_position_callback(GLFWwindow *window, double xpos,
