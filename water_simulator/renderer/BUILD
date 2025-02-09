@@ -18,17 +18,28 @@ cc_library(
     name = "renderer",
     srcs = ["renderer.cc"],
     hdrs = ["renderer.h"],
-    data = [
-        "//water_simulator/renderer/shaders:shader.frag",
-        "//water_simulator/renderer/shaders:shader.vert",
-    ],
     linkopts = opengl_linkopts,
     deps = [
         ":algebra",
         ":gl_error_macro",
         ":shader",
+        "//water_simulator/renderer:camera",
         "//water_simulator/renderer/entities:container",
         "//water_simulator/renderer/entities:light",
+        "//water_simulator/renderer/entities:water",
+        "@glew//:glew_static",
+        "@glfw",
+    ],
+)
+
+cc_library(
+    name = "camera",
+    srcs = ["camera.cc"],
+    hdrs = ["camera.h"],
+    linkopts = opengl_linkopts,
+    deps = [
+        ":gl_error_macro",
+        ":texture",
         "@glew//:glew_static",
         "@glfw",
     ],
@@ -60,6 +71,18 @@ cc_library(
     deps = [
         ":gl_error_macro",
         ":shader",
+        "@glew//:glew_static",
+        "@glfw",
+    ],
+)
+
+cc_library(
+    name = "texture",
+    srcs = ["texture.cc"],
+    hdrs = ["texture.h"],
+    linkopts = opengl_linkopts,
+    deps = [
+        ":gl_error_macro",
         "@glew//:glew_static",
         "@glfw",
     ],

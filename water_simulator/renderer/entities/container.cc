@@ -1,4 +1,3 @@
-
 #include "water_simulator/renderer/entities/container.h"
 #include "water_simulator/renderer/shader.h"
 #include "water_simulator/renderer/shader_context_manager.h"
@@ -13,8 +12,8 @@
 namespace water_simulator::renderer::entities {
 
 struct MeshData {
-  std::vector<float> vertex_data;
-  std::vector<uint32_t> indices;
+  std::vector<float> vertices;
+  std::vector<unsigned int> indices;
 };
 
 struct CubeData {
@@ -27,23 +26,23 @@ CubeData cube_vertices_normals_and_indices() {
   return {// Vertices (8 corners × 3 faces each = 24 entries)
           .vertices =
               {// Front face
-               -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f,
-               0.5f, 0.5f,
+               0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+               1.0f,
                // Back face
-               0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f,
-               0.5f, 0.5f, -0.5f,
+               1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+               0.0f,
                // Top face
-               -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f, -0.5f,
-               0.5f, -0.5f,
+               0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+               0.0f,
                // Bottom face
-               -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f,
-               -0.5f, -0.5f, 0.5f,
+               0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+               1.0f,
                // Right face
-               0.5f, -0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f,
-               0.5f, 0.5f,
+               1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+               1.0f,
                // Left face
-               -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f,
-               -0.5f, 0.5f, -0.5f},
+               0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+               0.0f},
 
           // Normals (6 faces × 4 vertices each = 24 entries)
           .normals =
@@ -72,48 +71,43 @@ CubeData cube_vertices_normals_and_indices() {
 }
 
 MeshData create_mesh(float size, float wall_thickness) {
+  constexpr float height_scale = 1.25f;
   CubeData cube = cube_vertices_normals_and_indices();
   MeshData mesh;
 
-  // Create plane
-  const float scale = size + wall_thickness;
-  mesh.vertex_data = {-scale, 0, -scale, 0, scale, 0, scale, 0,
-                      -scale, 0, scale,  0, scale, 0, scale, 0,
-                      scale,  0, -scale, 0, scale, 0, scale, 0};
+  // Add the floor plane:
+  mesh.vertices = {0,    0, 0,    0, size, 0, size, 0, 0,    0, size, 0,
+                   size, 0, size, 0, size, 0, 0,    0, size, 0, size, 0};
   mesh.indices = {2, 1, 0, 0, 3, 2};
 
-  // Wall configurations: {scaling, translation}
-  constexpr float height_scale = 1.25f;
-  const float wall_length = 2 * (size + wall_thickness);
   const std::array walls = {
-      std::pair{std::array{wall_length, height_scale, wall_thickness},
-                std::array{0.0f, height_scale / 2, size + wall_thickness / 2}},
-      std::pair{std::array{wall_length, height_scale, wall_thickness},
-                std::array{0.0f, height_scale / 2, -size - wall_thickness / 2}},
-      std::pair{std::array{wall_thickness, height_scale, wall_length},
-                std::array{size + wall_thickness / 2, height_scale / 2, 0.0f}},
-      std::pair{
-          std::array{wall_thickness, height_scale, wall_length},
-          std::array{-size - wall_thickness / 2, height_scale / 2, 0.0f}}};
+      std::pair{std::array{size, height_scale, wall_thickness},
+                std::array{0.0f, 0.0f, size}},
+      std::pair{std::array{wall_thickness, height_scale, size},
+                std::array{size, 0.0f, 0.0f}},
 
-  // Process walls
+      std::pair{std::array{size, height_scale, wall_thickness},
+                std::array{0.0f, 0.0f, -wall_thickness}},
+      std::pair{std::array{wall_thickness, height_scale, size},
+                std::array{-wall_thickness, 0.0f, 0.0f}},
+  };
   for (const auto &[scaling, translation] : walls) {
     for (size_t i = 0; i < cube.vertices.size(); i += 3) {
       const float x = cube.vertices[i] * scaling[0] + translation[0];
       const float y = cube.vertices[i + 1] * scaling[1] + translation[1];
       const float z = cube.vertices[i + 2] * scaling[2] + translation[2];
-      mesh.vertex_data.insert(mesh.vertex_data.end(), {x, y, z});
-      mesh.vertex_data.insert(mesh.vertex_data.end(), cube.normals.begin() + i,
-                              cube.normals.begin() + i + 3);
+      mesh.vertices.insert(mesh.vertices.end(), {x, y, z});
+      mesh.vertices.insert(mesh.vertices.end(), cube.normals.begin() + i,
+                           cube.normals.begin() + i + 3);
     }
   }
 
   // Generate indices
-  const uint32_t offset = *std::ranges::max_element(mesh.indices) + 1;
-  const uint32_t max_cube_idx = *std::ranges::max_element(cube.indices);
+  const unsigned int offset = *std::ranges::max_element(mesh.indices) + 1;
+  const unsigned int max_cube_idx = *std::ranges::max_element(cube.indices);
 
   for (int i = 0; i < 4; ++i) {
-    const uint32_t base = offset + i * (max_cube_idx + 1);
+    const unsigned int base = offset + i * (max_cube_idx + 1);
     for (const auto idx : cube.indices) {
       mesh.indices.push_back(base + idx);
     }
@@ -127,14 +121,15 @@ Container::Container(float wall_size, float wall_thickness)
       _vbo(0), _vao(0), _ebo(0) {
   MeshData mesh_data = create_mesh(wall_size, wall_thickness);
 
-  _vbo = init_vbo(mesh_data.vertex_data);
+  _vbo = init_vbo(mesh_data.vertices);
   _ebo = init_ebo(mesh_data.indices);
-  _vao = init_vao(_vbo, _ebo, mesh_data.vertex_data);
+  _vao = init_vao(_vbo, _ebo, mesh_data.vertices);
 
   glBindVertexArray(0);
 }
 
 Container::~Container() {
+  glBindVertexArray(0);
   if (_vbo != 0)
     glDeleteBuffers(1, &_vbo);
   if (_ebo != 0)
@@ -184,51 +179,37 @@ GLuint Container::init_vao(GLuint vbo, GLuint ebo,
 
 void Container::set_view(const std::array<float, 16> &view) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_matrix("view", view);
-  }
+  { _shader.set_uniform_matrix("view", view); }
 }
 
 void Container::set_view_position(const std::array<float, 3> &position) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_vector("viewPos", position);
-  }
+  { _shader.set_uniform_vector("viewPos", position); }
 }
 
 void Container::set_projection(const std::array<float, 16> &projection) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_matrix("projection", projection);
-  }
+  { _shader.set_uniform_matrix("projection", projection); }
 }
 
 void Container::set_model(const std::array<float, 16> &model) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_matrix("model", model);
-  }
+  { _shader.set_uniform_matrix("model", model); }
 }
 
 void Container::set_color(const std::array<float, 3> &color) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_vector("objectColor", color);
-  }
+  { _shader.set_uniform_vector("objectColor", color); }
 }
 
 void Container::set_light_position(const std::array<float, 3> &position) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_vector("lightPos", position);
-  }
+  { _shader.set_uniform_vector("lightPos", position); }
 }
 
 void Container::set_light_color(const std::array<float, 3> &color) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_vector("lightColor", color);
-  }
+  { _shader.set_uniform_vector("lightColor", color); }
 }
 
 void Container::draw() {

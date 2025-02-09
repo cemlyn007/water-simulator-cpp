@@ -14,6 +14,7 @@ public:
   ~Shader();
   void use();
   void unuse();
+  void set_uniform(const std::string &name, int value);
   void set_uniform_vector(const std::string &name,
                           const std::array<float, 2> vector);
   void set_uniform_vector(const std::string &name,

@@ -43,3 +43,19 @@ cc_library(
         "@glfw",
     ],
 )
+
+cc_library(
+    name = "water",
+    srcs = ["water.cc"],
+    hdrs = ["water.h"],
+    data = ["//water_simulator/renderer/shaders:basic_lighting"],
+    linkopts = opengl_linkopts,
+    deps = [
+        "//water_simulator/renderer:gl_error_macro",
+        "//water_simulator/renderer:shader",
+        "//water_simulator/renderer:shader_context_manager",
+        "//water_simulator/renderer:texture",
+        "@glew//:glew_static",
+        "@glfw",
+    ],
+)

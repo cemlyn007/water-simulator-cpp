@@ -1,7 +1,8 @@
 #pragma once
+#include "water_simulator/renderer/camera.h"
 #include "water_simulator/renderer/entities/container.h"
 #include "water_simulator/renderer/entities/light.h"
-#include "water_simulator/renderer/shader.h"
+#include "water_simulator/renderer/entities/water.h"
 #include <GLFW/glfw3.h>
 
 namespace water_simulator::renderer {
@@ -13,7 +14,6 @@ void terminate();
 class Renderer {
 private:
   GLFWwindow *_window;
-  Shader _shader;
   double _scroll_offset;
   double _mouse_position_in_pixels[2];
   double _last_mouse_position_in_pixels[2];
@@ -26,8 +26,10 @@ private:
 
   std::array<float, 3> _camera_position;
 
+  Camera _camera;
   entities::Light _light;
   entities::Container _container;
+  entities::Water _water;
 
 public:
   Renderer(int window_width, int window_height);
@@ -37,7 +39,7 @@ public:
   bool should_close();
 
 private:
-  void on_aspect_change();
+  void on_framebuffer_shape_change();
   void update_camera();
 
   GLFWwindow *create_window(int width, int height);

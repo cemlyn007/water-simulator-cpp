@@ -38,6 +38,11 @@ void Shader::use() { GL_CALL(glUseProgram(_program)); }
 
 void Shader::unuse() { GL_CALL(glUseProgram(0)); }
 
+void Shader::set_uniform(const std::string &name, int value) {
+  GLuint location = glGetUniformLocation(_program, name.c_str());
+  GL_CALL(glUniform1i(location, value););
+}
+
 void Shader::set_uniform_vector(const std::string &name,
                                 const std::array<float, 2> vector) {
   GLuint location = glGetUniformLocation(_program, name.c_str());
@@ -99,8 +104,8 @@ std::string read_file(const std::string &file_path) {
   }
   // else...
   std::stringstream buffer;
-  buffer << file.rdbuf(); // Read the entire file into the stringstream buffer
-  return buffer.str();    // Return the string from the buffer
+  buffer << file.rdbuf();
+  return buffer.str();
 }
 
 } // namespace water_simulator::renderer

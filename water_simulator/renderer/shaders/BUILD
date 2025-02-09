@@ -1,12 +1,5 @@
 package(default_visibility = ["//water_simulator:__subpackages__"])
 
-exports_files([
-    "shader.vert",
-    "shader.frag",
-    "light_cube.fs",
-    "light_cube.vs",
-])
-
 filegroup(
     name = "light_cube",
     srcs = [
@@ -20,5 +13,13 @@ filegroup(
     srcs = [
         "simple.fs",
         "simple.vs",
+    ],
+)
+
+filegroup(
+    name = "basic_lighting",
+    srcs = [
+        "basic_lighting.fs",
+        "basic_lighting.vs",
     ],
 )

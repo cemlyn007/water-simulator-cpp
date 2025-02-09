@@ -1,14 +1,8 @@
 #include "water_simulator/renderer/renderer.h"
 #include "water_simulator/renderer/algebra.h"
 #include "water_simulator/renderer/gl_error_macro.h"
-#include "water_simulator/renderer/shader.h"
 #include <GL/glew.h>
 #include <iostream>
-
-static const char *SHADER_VERTEX_FILE_PATH =
-    "water_simulator/renderer/shaders/shader.vert";
-static const char *SHADER_FRAGMENT_FILE_PATH =
-    "water_simulator/renderer/shaders/shader.frag";
 
 static void glfwErrorCallback(int error, const char *description) {
   std::cerr << "GLFW Error: " << error << " - " << description << std::endl;
@@ -27,56 +21,91 @@ void init() {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-};
+}
 
 void terminate() {
   glfwSetErrorCallback(nullptr);
   glfwTerminate();
-};
+}
+
+constexpr static float WALL_SIZE = 2.02;
+constexpr static float WALL_THICKNESS = 0.1f;
+constexpr static unsigned int RESOLUTION = 101;
 
 Renderer::Renderer(int window_width, int window_height)
-    : _window(create_window(window_width, window_height)),
-      _shader(read_file(SHADER_VERTEX_FILE_PATH),
-              read_file(SHADER_FRAGMENT_FILE_PATH)),
-      _mouse_click(false), _escape_pressed(false), _light(),
-      _container((100.0 * 0.02) / 2.0, 0.02 * 2.0) {
+    : _window(create_window(window_width, window_height)), _mouse_click(false),
+      _escape_pressed(false), _camera(window_width, window_height), _light(),
+      _container(WALL_SIZE, WALL_THICKNESS),
+      _water(RESOLUTION, WALL_SIZE, 0.0) {
 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LESS);
 
-  on_aspect_change();
+  on_framebuffer_shape_change();
 
   std::array<float, 3> light_position = {1.2, 4.0, 2.0};
 
   _light.set_color({1.0, 1.0, 1.0});
   _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), light_position));
 
+  auto container_water_model =
+      translate(eye4d(), {-(WALL_SIZE + WALL_THICKNESS) / 2.0, 0.0,
+                          -(WALL_SIZE + WALL_THICKNESS) / 2.0});
+
   _container.set_color({0.7, 0.7, 0.7});
-  _container.set_model(eye4d());
+  _container.set_model(container_water_model);
 
   _container.set_light_color({1.0, 1.0, 1.0});
   _container.set_light_position(light_position);
+
+  _water.set_color({0.0, 0.0, 1.0});
+  _water.set_model(container_water_model);
+
+  _water.set_light_color({1.0, 1.0, 1.0});
+  _water.set_light_position(light_position);
+
+  auto texture = _camera.texture();
+  _water.set_texture(texture);
 
   _camera_position = {2.5, 3.535534, 2.5};
   _camera_radians[0] = 0.7853982;
   _camera_radians[1] = 0.7853982;
 
   update_camera();
+
+  std::vector<float> heights((RESOLUTION + 1) * (RESOLUTION + 1), 1.0);
+  _water.set_heights(heights);
+
+  std::vector<float> normals(3 * (RESOLUTION + 1) * (RESOLUTION + 1), 0.0);
+  for (size_t i = 0; i < normals.size(); i += 3) {
+    normals[i + 1] = 1.0;
+  }
+  _water.set_normals(normals);
 }
 
-Renderer::~Renderer() { glfwDestroyWindow(_window); };
+Renderer::~Renderer() { glfwDestroyWindow(_window); }
 
 void Renderer::render() {
   glfwMakeContextCurrent(_window);
+
+  update_camera();
+
+  _camera.bind();
+  GL_CALL(glClearColor(0.1, 0.1, 0.1, 1.0));
+  GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+  _container.draw();
+  _camera.unbind();
+
   GL_CALL(glViewport(0, 0, _framebuffer_width, _framebuffer_height));
   GL_CALL(glClearColor(0.1, 0.1, 0.1, 1.0));
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-  update_camera();
-  _shader.use();
   _light.draw();
   _container.draw();
+  _water.draw();
+
   GL_CALL(glfwSwapBuffers(_window));
   _last_mouse_position_in_pixels[0] = _mouse_position_in_pixels[0];
   _last_mouse_position_in_pixels[1] = _mouse_position_in_pixels[1];
@@ -88,13 +117,15 @@ void Renderer::render() {
       _mouse_position_in_pixels[1] - _last_mouse_position_in_pixels[1];
 }
 
-void Renderer::on_aspect_change() {
+void Renderer::on_framebuffer_shape_change() {
+  _camera.resize(_framebuffer_width, _framebuffer_height);
   float aspect = static_cast<float>(_framebuffer_width) /
                  static_cast<float>(_framebuffer_height);
   auto projection = perspective(radians(60), aspect, 0.01, 100.0);
   _light.set_projection(projection);
   _container.set_projection(projection);
-};
+  _water.set_projection(projection);
+}
 
 void Renderer::update_camera() {
   float camera_radius =
@@ -113,7 +144,9 @@ void Renderer::update_camera() {
   _light.set_view(view);
   _container.set_view(view);
   _container.set_view_position(_camera_position);
-};
+  _water.set_view(view);
+  _water.set_view_position(_camera_position);
+}
 
 bool Renderer::should_close() {
   return glfwWindowShouldClose(_window) || _escape_pressed;
@@ -144,7 +177,7 @@ GLFWwindow *Renderer::create_window(int width, int height) {
   glfwSetCursorPosCallback(window, cursor_position_callback);
   glfwSetScrollCallback(window, scroll_callback);
   return window;
-};
+}
 
 void Renderer::key_callback(GLFWwindow *window, int key, int scancode,
                             int action, int mods) {
@@ -186,7 +219,7 @@ void Renderer::framebuffer_size_callback(GLFWwindow *window, int width,
   glViewport(0, 0, width, height);
   glfwGetFramebufferSize(window, &(renderer->_framebuffer_width),
                          &(renderer->_framebuffer_height));
-  renderer->on_aspect_change();
+  renderer->on_framebuffer_shape_change();
 }
 
 } // namespace water_simulator::renderer
