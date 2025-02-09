@@ -6,16 +6,17 @@
 #include <array>
 #include <string>
 #include <vector>
+
 namespace water_simulator::renderer::entities {
 
-struct MeshData {
+struct WaterData {
   std::vector<float> vertices;
   std::vector<float> normals;
   std::vector<unsigned int> indices;
 };
 
-MeshData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z,
-                                           float cell_size) {
+WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z,
+                                            float cell_size) {
   std::vector<float> vertices;
   std::vector<float> normals;
   std::vector<unsigned int> indices;
@@ -57,9 +58,10 @@ MeshData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z,
 
 Water::Water(size_t resolution, float length, float xz_offset)
     : _shader(read_file("water_simulator/renderer/shaders/basic_lighting.vs"),
-              read_file("water_simulator/renderer/shaders/basic_lighting.fs")) {
-  MeshData mesh_data = grid_vertices_normals_and_indices(resolution, resolution,
-                                                         length / (resolution));
+              read_file("water_simulator/renderer/shaders/basic_lighting.fs")),
+      _xz_vbo(0), _y_vbo(0), _normal_vbo(0), _vao(0), _ebo(0) {
+  WaterData mesh_data = grid_vertices_normals_and_indices(
+      resolution, resolution, length / (resolution));
   std::transform(mesh_data.vertices.begin(), mesh_data.vertices.end(),
                  mesh_data.vertices.begin(),
                  [&](auto &value) { return value + xz_offset; });
@@ -69,6 +71,7 @@ Water::Water(size_t resolution, float length, float xz_offset)
   _ebo = init_ebo(mesh_data.indices);
   _vao = init_vao(_xz_vbo, _y_vbo, _normal_vbo, _ebo, mesh_data.vertices);
   _indices = mesh_data.indices.size();
+  glBindVertexArray(0);
 }
 
 Water::~Water() {

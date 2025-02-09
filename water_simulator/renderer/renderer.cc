@@ -34,8 +34,8 @@ constexpr static unsigned int RESOLUTION = 101;
 
 Renderer::Renderer(int window_width, int window_height)
     : _window(create_window(window_width, window_height)), _mouse_click(false),
-      _escape_pressed(false), _camera(window_width, window_height), _light(),
-      _container(WALL_SIZE, WALL_THICKNESS),
+      _escape_pressed(false), _camera(window_width, window_height), _ball(),
+      _light(), _container(WALL_SIZE, WALL_THICKNESS),
       _water(RESOLUTION, WALL_SIZE, 0.0) {
 
   glEnable(GL_BLEND);
@@ -50,6 +50,12 @@ Renderer::Renderer(int window_width, int window_height)
 
   _light.set_color({1.0, 1.0, 1.0});
   _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), light_position));
+
+  _ball.set_color({1.0, 0.0, 0.0});
+  _ball.set_model(translate(eye4d(), {0.0, 0.5, 0.0}));
+
+  _ball.set_light_color({1.0, 1.0, 1.0});
+  _ball.set_light_position(light_position);
 
   auto container_water_model =
       translate(eye4d(), {-(WALL_SIZE + WALL_THICKNESS) / 2.0, 0.0,
@@ -97,6 +103,7 @@ void Renderer::render() {
   GL_CALL(glClearColor(0.1, 0.1, 0.1, 1.0));
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
   _container.draw();
+  _ball.draw();
   _camera.unbind();
 
   GL_CALL(glViewport(0, 0, _framebuffer_width, _framebuffer_height));
@@ -104,6 +111,7 @@ void Renderer::render() {
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
   _light.draw();
   _container.draw();
+  _ball.draw();
   _water.draw();
 
   GL_CALL(glfwSwapBuffers(_window));
@@ -123,6 +131,7 @@ void Renderer::on_framebuffer_shape_change() {
                  static_cast<float>(_framebuffer_height);
   auto projection = perspective(radians(60), aspect, 0.01, 100.0);
   _light.set_projection(projection);
+  _ball.set_projection(projection);
   _container.set_projection(projection);
   _water.set_projection(projection);
 }
@@ -142,6 +151,8 @@ void Renderer::update_camera() {
       _camera_radians[0], _camera_radians[1], camera_radius);
   auto view = look_at(_camera_position, {0.0, 0.5, 0.0}, {0.0, 1.0, 0.0});
   _light.set_view(view);
+  _ball.set_view(view);
+  _ball.set_view_position(_camera_position);
   _container.set_view(view);
   _container.set_view_position(_camera_position);
   _water.set_view(view);

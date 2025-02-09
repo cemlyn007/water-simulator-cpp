@@ -1,4 +1,3 @@
-
 #include "water_simulator/renderer/entities/light.h"
 #include "water_simulator/renderer/shader.h"
 #include "water_simulator/renderer/shader_context_manager.h"
@@ -97,30 +96,22 @@ GLuint Light::init_vao(GLuint vbo, GLuint ebo,
 
 void Light::set_view(const std::array<float, 16> &view) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_matrix("view", view);
-  }
+  { _shader.set_uniform_matrix("view", view); }
 }
 
 void Light::set_projection(const std::array<float, 16> &projection) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_matrix("projection", projection);
-  }
+  { _shader.set_uniform_matrix("projection", projection); }
 }
 
 void Light::set_model(const std::array<float, 16> &model) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_matrix("model", model);
-  }
+  { _shader.set_uniform_matrix("model", model); }
 }
 
 void Light::set_color(const std::array<float, 3> &color) {
   ShaderContextManager context(_shader);
-  {
-    _shader.set_uniform_vector("objectColor", color);
-  }
+  { _shader.set_uniform_vector("objectColor", color); }
 }
 
 void Light::draw() {

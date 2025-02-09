@@ -1,5 +1,6 @@
 #pragma once
 #include "water_simulator/renderer/camera.h"
+#include "water_simulator/renderer/entities/ball.h"
 #include "water_simulator/renderer/entities/container.h"
 #include "water_simulator/renderer/entities/light.h"
 #include "water_simulator/renderer/entities/water.h"
@@ -27,6 +28,7 @@ private:
   std::array<float, 3> _camera_position;
 
   Camera _camera;
+  entities::Ball _ball;
   entities::Light _light;
   entities::Container _container;
   entities::Water _water;

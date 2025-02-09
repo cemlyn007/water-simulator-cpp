@@ -24,6 +24,7 @@ cc_library(
         ":gl_error_macro",
         ":shader",
         "//water_simulator/renderer:camera",
+        "//water_simulator/renderer/entities:ball",
         "//water_simulator/renderer/entities:container",
         "//water_simulator/renderer/entities:light",
         "//water_simulator/renderer/entities:water",
