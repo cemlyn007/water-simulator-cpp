@@ -31,11 +31,9 @@ void terminate() {
 constexpr static float WALL_SIZE = 2.02;
 constexpr static float WALL_THICKNESS = 0.1f;
 
-Renderer::Renderer(int window_width, int window_height, size_t resolution,
-                   float spacing)
-    : _window(create_window(window_width, window_height)), _mouse_click(false),
-      _escape_pressed(false), _camera(window_width, window_height), _ball(),
-      _light(), _container(WALL_SIZE, WALL_THICKNESS),
+Renderer::Renderer(int window_width, int window_height, size_t resolution, float spacing)
+    : _window(create_window(window_width, window_height)), _mouse_click(false), _escape_pressed(false),
+      _camera(window_width, window_height), _ball(), _light(), _container(WALL_SIZE, WALL_THICKNESS),
       _water(resolution, WALL_SIZE, 0.0) {
 
   glEnable(GL_BLEND);
@@ -58,8 +56,7 @@ Renderer::Renderer(int window_width, int window_height, size_t resolution,
   _ball.set_light_position(light_position);
 
   auto container_water_model =
-      translate(eye4d(), {-(WALL_SIZE + WALL_THICKNESS) / 2.0, 0.0,
-                          -(WALL_SIZE + WALL_THICKNESS) / 2.0});
+      translate(eye4d(), {-(WALL_SIZE + WALL_THICKNESS) / 2.0, 0.0, -(WALL_SIZE + WALL_THICKNESS) / 2.0});
 
   _container.set_color({0.7, 0.7, 0.7});
   _container.set_model(container_water_model);
@@ -101,9 +98,7 @@ void Renderer::render(const engine::State &state) {
   // _ball.set_model();
   bool draw_ball = false;
   if (state._sphere_centers.size() > 0) {
-    _ball.set_model(
-        translate(eye4d(), {state._sphere_centers[0], state._sphere_centers[1],
-                            state._sphere_centers[2]}));
+    _ball.set_model(translate(eye4d(), {state._sphere_centers[0], state._sphere_centers[1], state._sphere_centers[2]}));
     draw_ball = true;
   }
 
@@ -135,16 +130,13 @@ void Renderer::render(const engine::State &state) {
   _last_mouse_position_in_pixels[1] = _mouse_position_in_pixels[1];
   _scroll_offset = 0.0;
   GL_CALL(glfwPollEvents());
-  _mouse_position_change_in_pixels[0] =
-      _mouse_position_in_pixels[0] - _last_mouse_position_in_pixels[0];
-  _mouse_position_change_in_pixels[1] =
-      _mouse_position_in_pixels[1] - _last_mouse_position_in_pixels[1];
+  _mouse_position_change_in_pixels[0] = _mouse_position_in_pixels[0] - _last_mouse_position_in_pixels[0];
+  _mouse_position_change_in_pixels[1] = _mouse_position_in_pixels[1] - _last_mouse_position_in_pixels[1];
 }
 
 void Renderer::on_framebuffer_shape_change() {
   _camera.resize(_framebuffer_width, _framebuffer_height);
-  float aspect = static_cast<float>(_framebuffer_width) /
-                 static_cast<float>(_framebuffer_height);
+  float aspect = static_cast<float>(_framebuffer_width) / static_cast<float>(_framebuffer_height);
   auto projection = perspective(radians(60), aspect, 0.01, 100.0);
   _light.set_projection(projection);
   _ball.set_projection(projection);
@@ -153,18 +145,12 @@ void Renderer::on_framebuffer_shape_change() {
 }
 
 void Renderer::update_camera() {
-  float camera_radius =
-      std::min(std::max(0.0, norm(_camera_position) + _scroll_offset), 25.0);
+  float camera_radius = std::min(std::max(0.0, norm(_camera_position) + _scroll_offset), 25.0);
   if (_mouse_click) {
-    _camera_radians[0] = std::fmod(
-        _camera_radians[0] + radians(_mouse_position_change_in_pixels[0]),
-        (2 * M_PI));
-    _camera_radians[1] = std::fmod(
-        _camera_radians[1] + radians(_mouse_position_change_in_pixels[1]),
-        (2 * M_PI));
+    _camera_radians[0] = std::fmod(_camera_radians[0] + radians(_mouse_position_change_in_pixels[0]), (2 * M_PI));
+    _camera_radians[1] = std::fmod(_camera_radians[1] + radians(_mouse_position_change_in_pixels[1]), (2 * M_PI));
   }
-  _camera_position = update_orbit_camera_position(
-      _camera_radians[0], _camera_radians[1], camera_radius);
+  _camera_position = update_orbit_camera_position(_camera_radians[0], _camera_radians[1], camera_radius);
   auto view = look_at(_camera_position, {0.0, 0.5, 0.0}, {0.0, 1.0, 0.0});
   _light.set_view(view);
   _ball.set_view(view);
@@ -175,13 +161,10 @@ void Renderer::update_camera() {
   _water.set_view_position(_camera_position);
 }
 
-bool Renderer::should_close() {
-  return glfwWindowShouldClose(_window) || _escape_pressed;
-}
+bool Renderer::should_close() { return glfwWindowShouldClose(_window) || _escape_pressed; }
 
 GLFWwindow *Renderer::create_window(int width, int height) {
-  GLFWwindow *window =
-      glfwCreateWindow(width, height, "Water Simulator", nullptr, nullptr);
+  GLFWwindow *window = glfwCreateWindow(width, height, "Water Simulator", nullptr, nullptr);
   if (!window) {
     throw std::runtime_error("Could not create window");
   }
@@ -190,9 +173,8 @@ GLFWwindow *Renderer::create_window(int width, int height) {
   GLenum error = glewInit();
   if (GLEW_OK != error) {
     glfwDestroyWindow(window);
-    throw std::runtime_error(
-        std::string("Error initializing glew: ") +
-        reinterpret_cast<const char *>(glewGetErrorString(error)));
+    throw std::runtime_error(std::string("Error initializing glew: ") +
+                             reinterpret_cast<const char *>(glewGetErrorString(error)));
   }
   glfwGetFramebufferSize(window, &_framebuffer_width, &_framebuffer_height);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -206,46 +188,35 @@ GLFWwindow *Renderer::create_window(int width, int height) {
   return window;
 }
 
-void Renderer::key_callback(GLFWwindow *window, int key, int scancode,
-                            int action, int mods) {
-  Renderer *renderer =
-      static_cast<Renderer *>(glfwGetWindowUserPointer(window));
+void Renderer::key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+  Renderer *renderer = static_cast<Renderer *>(glfwGetWindowUserPointer(window));
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     (renderer->_escape_pressed) = true;
 }
 
-void Renderer::mouse_button_callback(GLFWwindow *window, int button, int action,
-                                     int mods) {
-  Renderer *renderer =
-      static_cast<Renderer *>(glfwGetWindowUserPointer(window));
+void Renderer::mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+  Renderer *renderer = static_cast<Renderer *>(glfwGetWindowUserPointer(window));
   if (button == GLFW_MOUSE_BUTTON_LEFT)
     (renderer->_mouse_click) = (action == GLFW_PRESS);
 }
 
-void Renderer::cursor_position_callback(GLFWwindow *window, double xpos,
-                                        double ypos) {
-  Renderer *renderer =
-      static_cast<Renderer *>(glfwGetWindowUserPointer(window));
+void Renderer::cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
+  Renderer *renderer = static_cast<Renderer *>(glfwGetWindowUserPointer(window));
   (renderer->_mouse_position_in_pixels[0]) = xpos;
   (renderer->_mouse_position_in_pixels[1]) = ypos;
 }
 
-void Renderer::scroll_callback(GLFWwindow *window, double xoffset,
-                               double yoffset) {
-  Renderer *renderer =
-      static_cast<Renderer *>(glfwGetWindowUserPointer(window));
+void Renderer::scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
+  Renderer *renderer = static_cast<Renderer *>(glfwGetWindowUserPointer(window));
   (renderer->_scroll_offset) = yoffset;
 }
 
-void Renderer::framebuffer_size_callback(GLFWwindow *window, int width,
-                                         int height) {
-  Renderer *renderer =
-      static_cast<Renderer *>(glfwGetWindowUserPointer(window));
+void Renderer::framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+  Renderer *renderer = static_cast<Renderer *>(glfwGetWindowUserPointer(window));
 
   glfwMakeContextCurrent(window);
   glViewport(0, 0, width, height);
-  glfwGetFramebufferSize(window, &(renderer->_framebuffer_width),
-                         &(renderer->_framebuffer_height));
+  glfwGetFramebufferSize(window, &(renderer->_framebuffer_width), &(renderer->_framebuffer_height));
   renderer->on_framebuffer_shape_change();
 }
 

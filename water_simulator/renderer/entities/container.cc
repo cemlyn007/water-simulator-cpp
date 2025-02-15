@@ -26,23 +26,17 @@ CubeData cube_vertices_normals_and_indices() {
   return {// Vertices (8 corners × 3 faces each = 24 entries)
           .vertices =
               {// Front face
-               0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-               1.0f,
+               0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
                // Back face
-               1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-               0.0f,
+               1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
                // Top face
-               0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-               0.0f,
+               0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
                // Bottom face
-               0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-               1.0f,
+               0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
                // Right face
-               1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-               1.0f,
+               1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f,
                // Left face
-               0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-               0.0f},
+               0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f},
 
           // Normals (6 faces × 4 vertices each = 24 entries)
           .normals =
@@ -76,20 +70,15 @@ MeshData create_mesh(float size, float wall_thickness) {
   MeshData mesh;
 
   // Add the floor plane:
-  mesh.vertices = {0,    0, 0,    0, size, 0, size, 0, 0,    0, size, 0,
-                   size, 0, size, 0, size, 0, 0,    0, size, 0, size, 0};
+  mesh.vertices = {0, 0, 0, 0, size, 0, size, 0, 0, 0, size, 0, size, 0, size, 0, size, 0, 0, 0, size, 0, size, 0};
   mesh.indices = {2, 1, 0, 0, 3, 2};
 
   const std::array walls = {
-      std::pair{std::array{size, height_scale, wall_thickness},
-                std::array{0.0f, 0.0f, size}},
-      std::pair{std::array{wall_thickness, height_scale, size},
-                std::array{size, 0.0f, 0.0f}},
+      std::pair{std::array{size, height_scale, wall_thickness}, std::array{0.0f, 0.0f, size}},
+      std::pair{std::array{wall_thickness, height_scale, size}, std::array{size, 0.0f, 0.0f}},
 
-      std::pair{std::array{size, height_scale, wall_thickness},
-                std::array{0.0f, 0.0f, -wall_thickness}},
-      std::pair{std::array{wall_thickness, height_scale, size},
-                std::array{-wall_thickness, 0.0f, 0.0f}},
+      std::pair{std::array{size, height_scale, wall_thickness}, std::array{0.0f, 0.0f, -wall_thickness}},
+      std::pair{std::array{wall_thickness, height_scale, size}, std::array{-wall_thickness, 0.0f, 0.0f}},
   };
   for (const auto &[scaling, translation] : walls) {
     for (size_t i = 0; i < cube.vertices.size(); i += 3) {
@@ -97,8 +86,7 @@ MeshData create_mesh(float size, float wall_thickness) {
       const float y = cube.vertices[i + 1] * scaling[1] + translation[1];
       const float z = cube.vertices[i + 2] * scaling[2] + translation[2];
       mesh.vertices.insert(mesh.vertices.end(), {x, y, z});
-      mesh.vertices.insert(mesh.vertices.end(), cube.normals.begin() + i,
-                           cube.normals.begin() + i + 3);
+      mesh.vertices.insert(mesh.vertices.end(), cube.normals.begin() + i, cube.normals.begin() + i + 3);
     }
   }
 
@@ -142,8 +130,7 @@ GLuint Container::init_vbo(const std::vector<float> &vertices) {
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float),
-               vertices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
   return vbo;
 }
 
@@ -151,13 +138,11 @@ GLuint Container::init_ebo(const std::vector<unsigned int> &indices) {
   GLuint ebo;
   glGenBuffers(1, &ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
-               indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
   return ebo;
 }
 
-GLuint Container::init_vao(GLuint vbo, GLuint ebo,
-                           const std::vector<float> &vertices) {
+GLuint Container::init_vao(GLuint vbo, GLuint ebo, const std::vector<float> &vertices) {
   GLuint vao;
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
@@ -165,12 +150,10 @@ GLuint Container::init_vao(GLuint vbo, GLuint ebo,
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
-                        reinterpret_cast<void *>(0));
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void *>(0));
   glEnableVertexAttribArray(0);
 
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
-                        reinterpret_cast<void *>(3 * sizeof(float)));
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void *>(3 * sizeof(float)));
   glEnableVertexAttribArray(1);
 
   glBindVertexArray(0);
@@ -179,37 +162,51 @@ GLuint Container::init_vao(GLuint vbo, GLuint ebo,
 
 void Container::set_view(const std::array<float, 16> &view) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_matrix("view", view); }
+  {
+    _shader.set_uniform_matrix("view", view);
+  }
 }
 
 void Container::set_view_position(const std::array<float, 3> &position) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_vector("viewPos", position); }
+  {
+    _shader.set_uniform_vector("viewPos", position);
+  }
 }
 
 void Container::set_projection(const std::array<float, 16> &projection) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_matrix("projection", projection); }
+  {
+    _shader.set_uniform_matrix("projection", projection);
+  }
 }
 
 void Container::set_model(const std::array<float, 16> &model) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_matrix("model", model); }
+  {
+    _shader.set_uniform_matrix("model", model);
+  }
 }
 
 void Container::set_color(const std::array<float, 3> &color) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_vector("objectColor", color); }
+  {
+    _shader.set_uniform_vector("objectColor", color);
+  }
 }
 
 void Container::set_light_position(const std::array<float, 3> &position) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_vector("lightPos", position); }
+  {
+    _shader.set_uniform_vector("lightPos", position);
+  }
 }
 
 void Container::set_light_color(const std::array<float, 3> &color) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_vector("lightColor", color); }
+  {
+    _shader.set_uniform_vector("lightColor", color);
+  }
 }
 
 void Container::draw() {

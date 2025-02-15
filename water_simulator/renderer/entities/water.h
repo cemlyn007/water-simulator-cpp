@@ -41,8 +41,7 @@ private:
   GLuint init_vbo(const std::vector<float> &vertices);
   GLuint init_vbo(size_t bytes, bool dynamic);
   GLuint init_ebo(const std::vector<unsigned int> &indices);
-  GLuint init_vao(GLuint xz_vbo, GLuint y_vbo, GLuint normal_vbo, GLuint ebo,
-                  const std::vector<float> &vertices);
+  GLuint init_vao(GLuint xz_vbo, GLuint y_vbo, GLuint normal_vbo, GLuint ebo, const std::vector<float> &vertices);
 };
 
 } // namespace water_simulator::renderer::entities

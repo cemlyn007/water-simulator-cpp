@@ -25,8 +25,7 @@ private:
 
   GLuint init_vbo(const std::array<float, 72> &vertices);
   GLuint init_ebo(const std::array<unsigned int, 36> &indices);
-  GLuint init_vao(GLuint vbo, GLuint ebo,
-                  const std::array<float, 72> &vertices);
+  GLuint init_vao(GLuint vbo, GLuint ebo, const std::array<float, 72> &vertices);
 };
 
 } // namespace water_simulator::renderer::entities
