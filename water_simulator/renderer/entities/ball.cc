@@ -5,6 +5,7 @@
 #include <GL/glew.h>
 
 #include <array>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -78,8 +79,7 @@ Ball::Ball()
       _vbo(0), _vao(0), _ebo(0) {
   BallData mesh_data = create_ball_mesh();
 
-  std::vector<float> interleaved(mesh_data.vertices.size() +
-                                 mesh_data.normals.size());
+  std::vector<float> interleaved(mesh_data.vertices.size() + mesh_data.normals.size());
   size_t dst = 0;
   for (size_t i = 0; i < mesh_data.vertices.size(); i += 3) {
     interleaved[dst + 0] = static_cast<float>(mesh_data.vertices[i]);
@@ -113,8 +113,7 @@ GLuint Ball::init_vbo(const std::vector<float> &vertices) {
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float),
-               vertices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
   return vbo;
 }
 
@@ -122,8 +121,7 @@ GLuint Ball::init_ebo(const std::vector<unsigned int> &indices) {
   GLuint ebo;
   glGenBuffers(1, &ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
-               indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
   return ebo;
 }
 
@@ -135,12 +133,11 @@ GLuint Ball::init_vao(GLuint vbo, GLuint ebo) {
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 
-  GL_CALL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
-                                reinterpret_cast<void *>(0)));
+  GL_CALL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void *>(0)));
   glEnableVertexAttribArray(0);
 
-  GL_CALL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float),
-                                reinterpret_cast<void *>(3 * sizeof(float))));
+  GL_CALL(
+      glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void *>(3 * sizeof(float))));
   glEnableVertexAttribArray(1);
 
   glBindVertexArray(0);
@@ -149,37 +146,51 @@ GLuint Ball::init_vao(GLuint vbo, GLuint ebo) {
 
 void Ball::set_view(const std::array<float, 16> &view) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_matrix("view", view); }
+  {
+    _shader.set_uniform_matrix("view", view);
+  }
 }
 
 void Ball::set_view_position(const std::array<float, 3> &position) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_vector("viewPos", position); }
+  {
+    _shader.set_uniform_vector("viewPos", position);
+  }
 }
 
 void Ball::set_projection(const std::array<float, 16> &projection) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_matrix("projection", projection); }
+  {
+    _shader.set_uniform_matrix("projection", projection);
+  }
 }
 
 void Ball::set_model(const std::array<float, 16> &model) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_matrix("model", model); }
+  {
+    _shader.set_uniform_matrix("model", model);
+  }
 }
 
 void Ball::set_color(const std::array<float, 3> &color) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_vector("objectColor", color); }
+  {
+    _shader.set_uniform_vector("objectColor", color);
+  }
 }
 
 void Ball::set_light_position(const std::array<float, 3> &position) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_vector("lightPos", position); }
+  {
+    _shader.set_uniform_vector("lightPos", position);
+  }
 }
 
 void Ball::set_light_color(const std::array<float, 3> &color) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_vector("lightColor", color); }
+  {
+    _shader.set_uniform_vector("lightColor", color);
+  }
 }
 
 void Ball::draw() {
