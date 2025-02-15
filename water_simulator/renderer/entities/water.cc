@@ -57,11 +57,12 @@ WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z,
 }
 
 Water::Water(size_t resolution, float length, float xz_offset)
-    : _shader(read_file("water_simulator/renderer/shaders/basic_lighting.vs"),
+    : _resolution(resolution),
+      _shader(read_file("water_simulator/renderer/shaders/basic_lighting.vs"),
               read_file("water_simulator/renderer/shaders/basic_lighting.fs")),
       _xz_vbo(0), _y_vbo(0), _normal_vbo(0), _vao(0), _ebo(0) {
   WaterData mesh_data = grid_vertices_normals_and_indices(
-      resolution, resolution, length / (resolution));
+      resolution - 1, resolution - 1, length / (resolution - 1));
   std::transform(mesh_data.vertices.begin(), mesh_data.vertices.end(),
                  mesh_data.vertices.begin(),
                  [&](auto &value) { return value + xz_offset; });
@@ -180,12 +181,16 @@ void Water::set_texture(Texture &texture) {
 }
 
 void Water::set_heights(const std::vector<float> &heights) {
+  if (heights.size() != _resolution * _resolution)
+    throw std::invalid_argument("Invalid heights size");
   glBindBuffer(GL_ARRAY_BUFFER, _y_vbo);
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, heights.size() * sizeof(float),
                        heights.data(), GL_DYNAMIC_DRAW));
 }
 
 void Water::set_normals(const std::vector<float> &normals) {
+  if (normals.size() != 3 * _resolution * _resolution)
+    throw std::invalid_argument("Invalid heights size");
   glBindBuffer(GL_ARRAY_BUFFER, _normal_vbo);
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float),
                        normals.data(), GL_DYNAMIC_DRAW));

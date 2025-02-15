@@ -1,4 +1,5 @@
 #pragma once
+#include "water_simulator/engine/state.h"
 #include "water_simulator/renderer/camera.h"
 #include "water_simulator/renderer/entities/ball.h"
 #include "water_simulator/renderer/entities/container.h"
@@ -34,10 +35,11 @@ private:
   entities::Water _water;
 
 public:
-  Renderer(int window_width, int window_height);
+  Renderer(int window_width, int window_height, size_t resolution,
+           float spacing);
   ~Renderer();
 
-  void render();
+  void render(const engine::State &state);
   bool should_close();
 
 private:

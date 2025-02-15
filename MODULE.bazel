@@ -9,8 +9,8 @@ module(
 )
 
 bazel_dep(name = "platforms", version = "0.0.11")
-bazel_dep(name = "apple_support", version = "1.17.1", repo_name = "build_bazel_apple_support")
-bazel_dep(name = "rules_cc", version = "0.0.17")
+bazel_dep(name = "apple_support", version = "1.18.0", repo_name = "build_bazel_apple_support")
+bazel_dep(name = "rules_cc", version = "0.1.1")
 
 #-------------------------------------------------------------
 # Hedron's Compile Commands Extractor for Bazel
@@ -29,14 +29,14 @@ git_override(
 #-------------------------------------------------------------
 
 # https://github.com/bazel-contrib/toolchains_llvm/blob/master/toolchain/internal/llvm_distributions.bzl
-# https://github.com/bazel-contrib/toolchains_llvm/blob/69d39965f82061209e4c7cd29399ab9179625dad/tests/MODULE.bazel#L62
+# https://github.com/bazel-contrib/toolchains_llvm/blob/7e8e16edc0d79351a277f18f2083e8cb31a3e84a/tests/MODULE.bazel#L62
 bazel_dep(name = "toolchains_llvm")
 
 # To directly use a commit from GitHub, replace commit with the commit you want.
 # Otherwise, omit this block.
 git_override(
     module_name = "toolchains_llvm",
-    commit = "69d39965f82061209e4c7cd29399ab9179625dad",
+    commit = "7e8e16edc0d79351a277f18f2083e8cb31a3e84a",
     remote = "https://github.com/bazel-contrib/toolchains_llvm",
 )
 
@@ -51,7 +51,9 @@ llvm.toolchain(
         "darwin-aarch64": "",
         "darwin-x86_64": "",
     },
-    cxx_standard = {"": "c++23"},
+    cxx_standard = {
+        "": "c++23",
+    },
 )
 use_repo(llvm, "llvm_toolchain")
 

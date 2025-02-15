@@ -23,6 +23,7 @@ cc_library(
         ":algebra",
         ":gl_error_macro",
         ":shader",
+        "//water_simulator/engine:state",
         "//water_simulator/renderer:camera",
         "//water_simulator/renderer/entities:ball",
         "//water_simulator/renderer/entities:container",

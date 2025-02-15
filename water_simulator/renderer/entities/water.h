@@ -27,6 +27,8 @@ public:
   void draw();
 
 private:
+  size_t _resolution;
+
   Shader _shader;
   GLuint _xz_vbo;
   GLuint _y_vbo;

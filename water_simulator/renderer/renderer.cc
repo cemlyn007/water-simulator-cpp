@@ -30,13 +30,13 @@ void terminate() {
 
 constexpr static float WALL_SIZE = 2.02;
 constexpr static float WALL_THICKNESS = 0.1f;
-constexpr static unsigned int RESOLUTION = 101;
 
-Renderer::Renderer(int window_width, int window_height)
+Renderer::Renderer(int window_width, int window_height, size_t resolution,
+                   float spacing)
     : _window(create_window(window_width, window_height)), _mouse_click(false),
       _escape_pressed(false), _camera(window_width, window_height), _ball(),
       _light(), _container(WALL_SIZE, WALL_THICKNESS),
-      _water(RESOLUTION, WALL_SIZE, 0.0) {
+      _water(resolution, WALL_SIZE, 0.0) {
 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -52,7 +52,7 @@ Renderer::Renderer(int window_width, int window_height)
   _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), light_position));
 
   _ball.set_color({1.0, 0.0, 0.0});
-  _ball.set_model(translate(eye4d(), {0.0, 0.5, 0.0}));
+  _ball.set_model(eye4d());
 
   _ball.set_light_color({1.0, 1.0, 1.0});
   _ball.set_light_position(light_position);
@@ -82,10 +82,10 @@ Renderer::Renderer(int window_width, int window_height)
 
   update_camera();
 
-  std::vector<float> heights((RESOLUTION + 1) * (RESOLUTION + 1), 1.0);
+  std::vector<float> heights(resolution * resolution, 1.0);
   _water.set_heights(heights);
 
-  std::vector<float> normals(3 * (RESOLUTION + 1) * (RESOLUTION + 1), 0.0);
+  std::vector<float> normals(3 * resolution * resolution, 0.0);
   for (size_t i = 0; i < normals.size(); i += 3) {
     normals[i + 1] = 1.0;
   }
@@ -94,7 +94,19 @@ Renderer::Renderer(int window_width, int window_height)
 
 Renderer::~Renderer() { glfwDestroyWindow(_window); }
 
-void Renderer::render() {
+void Renderer::render(const engine::State &state) {
+  _water.set_heights(state._water_heights);
+
+  // TODO: Implement properly:
+  // _ball.set_model();
+  bool draw_ball = false;
+  if (state._sphere_centers.size() > 0) {
+    _ball.set_model(
+        translate(eye4d(), {state._sphere_centers[0], state._sphere_centers[1],
+                            state._sphere_centers[2]}));
+    draw_ball = true;
+  }
+
   glfwMakeContextCurrent(_window);
 
   update_camera();
@@ -103,7 +115,9 @@ void Renderer::render() {
   GL_CALL(glClearColor(0.1, 0.1, 0.1, 1.0));
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
   _container.draw();
-  _ball.draw();
+  if (draw_ball) {
+    _ball.draw();
+  }
   _camera.unbind();
 
   GL_CALL(glViewport(0, 0, _framebuffer_width, _framebuffer_height));
@@ -111,7 +125,9 @@ void Renderer::render() {
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
   _light.draw();
   _container.draw();
-  _ball.draw();
+  if (draw_ball) {
+    _ball.draw();
+  }
   _water.draw();
 
   GL_CALL(glfwSwapBuffers(_window));
