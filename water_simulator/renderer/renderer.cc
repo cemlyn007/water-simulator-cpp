@@ -177,6 +177,7 @@ GLFWwindow *Renderer::create_window(int width, int height) {
     throw std::runtime_error(std::string("Error initializing glew: ") +
                              reinterpret_cast<const char *>(glewGetErrorString(error)));
   }
+  glfwSwapInterval(0);
   glfwGetFramebufferSize(window, &_framebuffer_width, &_framebuffer_height);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
   glfwSetWindowUserPointer(window, this);
