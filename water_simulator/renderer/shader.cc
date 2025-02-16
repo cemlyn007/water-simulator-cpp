@@ -44,17 +44,17 @@ void Shader::set_uniform(const std::string &name, int value) {
   GL_CALL(glUniform1i(location, value););
 }
 
-void Shader::set_uniform_vector(const std::string &name, const std::array<float, 2> vector) {
+void Shader::set_uniform_vector(const std::string &name, const std::array<float, 2> &vector) {
   GLuint location = glGetUniformLocation(_program, name.c_str());
   GL_CALL(glUniform2fv(location, 1, vector.data()););
 }
 
-void Shader::set_uniform_vector(const std::string &name, const std::array<float, 3> vector) {
+void Shader::set_uniform_vector(const std::string &name, const std::array<float, 3> &vector) {
   GLuint location = glGetUniformLocation(_program, name.c_str());
   GL_CALL(glUniform3fv(location, 1, vector.data()););
 }
 
-void Shader::set_uniform_matrix(const std::string &name, const std::array<float, 16> matrix) {
+void Shader::set_uniform_matrix(const std::string &name, const std::array<float, 16> &matrix) {
   GLuint location = glGetUniformLocation(_program, name.c_str());
   GL_CALL(glUniformMatrix4fv(location, 1, GL_FALSE, matrix.data()););
 }

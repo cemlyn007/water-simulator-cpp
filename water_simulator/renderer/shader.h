@@ -22,9 +22,9 @@ public:
   void use();
   void unuse();
   void set_uniform(const std::string &name, int value);
-  void set_uniform_vector(const std::string &name, const std::array<float, 2> vector);
-  void set_uniform_vector(const std::string &name, const std::array<float, 3> vector);
-  void set_uniform_matrix(const std::string &name, const std::array<float, 16> matrix);
+  void set_uniform_vector(const std::string &name, const std::array<float, 2> &vector);
+  void set_uniform_vector(const std::string &name, const std::array<float, 3> &vector);
+  void set_uniform_matrix(const std::string &name, const std::array<float, 16> &matrix);
 
 private:
   GLuint load_program(std::string vertex_source_code, std::string fragment_source_code);
