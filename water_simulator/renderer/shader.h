@@ -12,6 +12,13 @@ private:
 public:
   Shader(std::string vertex_source_code, std::string fragment_source_code);
   ~Shader();
+
+  Shader(const Shader &) = delete;
+  Shader &operator=(const Shader &) = delete;
+
+  Shader(Shader &&other) noexcept = delete;
+  Shader &operator=(Shader &&other) noexcept = delete;
+
   void use();
   void unuse();
   void set_uniform(const std::string &name, int value);

@@ -1,5 +1,5 @@
 #include "water_simulator/engine/engine.h"
-#include <iostream>
+#include <cmath>
 #include <mdspan>
 
 namespace water_simulator::engine {
@@ -148,7 +148,6 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
   // TODO: Export
   const float VELOCITY_DAMPING = 0.3;
   auto velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * state._time_delta);
-  std::cout << "Velocity damping: " << velocity_damping << std::endl;
   for (size_t index = 0; index < state._water_heights.size(); ++index) {
     state._water_velocities[index] += state._time_delta * c * (sums[index] - KERNEL_SUM * state._water_heights[index]);
     state._water_velocities[index] *= velocity_damping;

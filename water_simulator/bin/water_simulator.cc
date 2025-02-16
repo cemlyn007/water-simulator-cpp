@@ -14,16 +14,16 @@ constexpr float SPACING = 0.02;
 
 int main(int argc, char *argv[]) {
   renderer::init();
-  engine::State state(1, RESOLUTION, RESOLUTION, 0.02, 0.8, {0.3}, {0.7});
+  engine::State state(2, RESOLUTION, RESOLUTION, 0.02, 0.8, {0.3, 0.3}, {0.7, 0.7});
   state._sphere_centers[1] = 2.0;
-  renderer::Renderer renderer(1080, 1080, RESOLUTION, SPACING);
+  state._sphere_centers[4] = 5.0;
+  renderer::Renderer renderer(1080, 1080, RESOLUTION, SPACING,
+                              {{{1.0, 0.0, 0.0}, {0.0, 2.0, 0.0}, 0.3}, {{0.0, 1.0, 0.0}, {0.0, 4.0, 0.0}, 0.3}});
   auto ms = 16ms;
   auto start = std::chrono::high_resolution_clock::now();
   while (!renderer.should_close()) {
     state._time_delta = ms.count() / 1000.0;
-    std::cout << "Engine stepping... " << state._time_delta << std::endl;
     state = engine::step(state);
-    std::cout << "Rendering..." << std::endl;
     renderer.render(state);
     auto end = std::chrono::high_resolution_clock::now();
     ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

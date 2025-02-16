@@ -30,7 +30,10 @@ GLuint Shader::load_program(std::string vertex_source_code, std::string fragment
   return shader_program;
 };
 
-Shader::~Shader() { glDeleteProgram(_program); }
+Shader::~Shader() {
+  if (_program != 0)
+    glDeleteProgram(_program);
+}
 
 void Shader::use() { GL_CALL(glUseProgram(_program)); }
 

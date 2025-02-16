@@ -9,6 +9,12 @@
 
 namespace water_simulator::renderer {
 
+struct BallConfig {
+  std::array<float, 3> color;
+  std::array<float, 3> position;
+  float radius;
+};
+
 void init();
 
 void terminate();
@@ -29,13 +35,14 @@ private:
   std::array<float, 3> _camera_position;
 
   Camera _camera;
-  entities::Ball _ball;
   entities::Light _light;
   entities::Container _container;
   entities::Water _water;
+  std::vector<entities::Ball> _balls;
 
 public:
-  Renderer(int window_width, int window_height, size_t resolution, float spacing);
+  Renderer(int window_width, int window_height, size_t resolution, float spacing,
+           const std::vector<BallConfig> &ball_configs);
   ~Renderer();
 
   void render(const engine::State &state);

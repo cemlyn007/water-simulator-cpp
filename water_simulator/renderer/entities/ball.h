@@ -11,6 +11,12 @@ public:
   Ball();
   ~Ball();
 
+  Ball(const Ball &) = delete;
+  Ball &operator=(const Ball &) = delete;
+
+  Ball(Ball &&other) = delete;
+  Ball &operator=(Ball &&other) = delete;
+
   void set_view(const std::array<float, 16> &view);
   void set_view_position(const std::array<float, 3> &position);
   void set_projection(const std::array<float, 16> &projection);

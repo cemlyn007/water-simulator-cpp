@@ -31,10 +31,11 @@ void terminate() {
 constexpr static float WALL_SIZE = 2.02;
 constexpr static float WALL_THICKNESS = 0.1f;
 
-Renderer::Renderer(int window_width, int window_height, size_t resolution, float spacing)
+Renderer::Renderer(int window_width, int window_height, size_t resolution, float spacing,
+                   const std::vector<BallConfig> &ball_configs)
     : _window(create_window(window_width, window_height)), _mouse_click(false), _escape_pressed(false),
-      _camera(window_width, window_height), _ball(), _light(), _container(WALL_SIZE, WALL_THICKNESS),
-      _water(resolution, WALL_SIZE, 0.0) {
+      _camera(window_width, window_height), _light(), _container(WALL_SIZE, WALL_THICKNESS),
+      _water(resolution, WALL_SIZE, 0.0), _balls(ball_configs.size()) {
 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -49,11 +50,15 @@ Renderer::Renderer(int window_width, int window_height, size_t resolution, float
   _light.set_color({1.0, 1.0, 1.0});
   _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), light_position));
 
-  _ball.set_color({1.0, 0.0, 0.0});
-  _ball.set_model(eye4d());
+  for (size_t sphere = 0; sphere < ball_configs.size(); ++sphere) {
+    _balls[sphere].set_color(ball_configs[sphere].color);
+    _balls[sphere].set_model(eye4d());
+  }
 
-  _ball.set_light_color({1.0, 1.0, 1.0});
-  _ball.set_light_position(light_position);
+  for (auto &ball : _balls) {
+    ball.set_light_color({1.0, 1.0, 1.0});
+    ball.set_light_position(light_position);
+  }
 
   auto container_water_model =
       translate(eye4d(), {-(WALL_SIZE + WALL_THICKNESS) / 2.0, 0.0, -(WALL_SIZE + WALL_THICKNESS) / 2.0});
@@ -93,14 +98,9 @@ Renderer::~Renderer() { glfwDestroyWindow(_window); }
 
 void Renderer::render(const engine::State &state) {
   _water.set_heights(state._water_heights);
-
-  // TODO: Implement properly:
-  // _ball.set_model();
-  bool draw_ball = false;
-  if (state._sphere_centers.size() > 0) {
-    _ball.set_model(translate(eye4d(), {state._sphere_centers[0], state._sphere_centers[1], state._sphere_centers[2]}));
-    draw_ball = true;
-  }
+  for (size_t ball = 0; ball < _balls.size(); ++ball)
+    _balls[ball].set_model(translate(eye4d(), {state._sphere_centers[3 * ball], state._sphere_centers[3 * ball + 1],
+                                               state._sphere_centers[3 * ball + 2]}));
 
   glfwMakeContextCurrent(_window);
 
@@ -110,9 +110,8 @@ void Renderer::render(const engine::State &state) {
   GL_CALL(glClearColor(0.1, 0.1, 0.1, 1.0));
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
   _container.draw();
-  if (draw_ball) {
-    _ball.draw();
-  }
+  for (auto &ball : _balls)
+    ball.draw();
   _camera.unbind();
 
   GL_CALL(glViewport(0, 0, _framebuffer_width, _framebuffer_height));
@@ -120,9 +119,8 @@ void Renderer::render(const engine::State &state) {
   GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
   _light.draw();
   _container.draw();
-  if (draw_ball) {
-    _ball.draw();
-  }
+  for (auto &ball : _balls)
+    ball.draw();
   _water.draw();
 
   GL_CALL(glfwSwapBuffers(_window));
@@ -139,7 +137,8 @@ void Renderer::on_framebuffer_shape_change() {
   float aspect = static_cast<float>(_framebuffer_width) / static_cast<float>(_framebuffer_height);
   auto projection = perspective(radians(60), aspect, 0.01, 100.0);
   _light.set_projection(projection);
-  _ball.set_projection(projection);
+  for (auto &ball : _balls)
+    ball.set_projection(projection);
   _container.set_projection(projection);
   _water.set_projection(projection);
 }
@@ -153,8 +152,10 @@ void Renderer::update_camera() {
   _camera_position = update_orbit_camera_position(_camera_radians[0], _camera_radians[1], camera_radius);
   auto view = look_at(_camera_position, {0.0, 0.5, 0.0}, {0.0, 1.0, 0.0});
   _light.set_view(view);
-  _ball.set_view(view);
-  _ball.set_view_position(_camera_position);
+  for (auto &ball : _balls) {
+    ball.set_view(view);
+    ball.set_view_position(_camera_position);
+  }
   _container.set_view(view);
   _container.set_view_position(_camera_position);
   _water.set_view(view);
