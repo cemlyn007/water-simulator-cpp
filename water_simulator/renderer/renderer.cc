@@ -99,8 +99,10 @@ Renderer::~Renderer() { glfwDestroyWindow(_window); }
 void Renderer::render(const engine::State &state) {
   _water.set_heights(state._water_heights);
   for (size_t ball = 0; ball < _balls.size(); ++ball)
-    _balls[ball].set_model(translate(eye4d(), {state._sphere_centers[3 * ball], state._sphere_centers[3 * ball + 1],
-                                               state._sphere_centers[3 * ball + 2]}));
+    // The multiply by 2 for the radii is because the balls are drawn with a radius of 0.5
+    _balls[ball].set_model(translate(
+        scale(eye4d(), {state._sphere_radii[ball] * 2, state._sphere_radii[ball] * 2, state._sphere_radii[ball] * 2}),
+        {state._sphere_centers[3 * ball], state._sphere_centers[3 * ball + 1], state._sphere_centers[3 * ball + 2]}));
 
   glfwMakeContextCurrent(_window);
 

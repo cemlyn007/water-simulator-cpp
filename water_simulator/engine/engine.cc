@@ -88,14 +88,13 @@ std::vector<float> smooth_sphere_body_heights(std::vector<float> body_heights, c
   return body_heights;
 }
 
-State apply_container_collisions(State state) {
+State apply_container_collisions(State state, float restitution) {
   const size_t n_spheres = state._sphere_centers.size() / 3;
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
     size_t sphere_y_index = 3 * sphere + 1;
-    if (state._sphere_centers[sphere_y_index] - state._sphere_radii[sphere] <= 0.0) {
+    if (state._sphere_centers[sphere_y_index] <= state._sphere_radii[sphere]) {
       state._sphere_centers[sphere_y_index] = state._sphere_radii[sphere];
-      state._sphere_velocities[sphere_y_index] = 0.0;
-      // TODO: I should also apply an opposite force to the sphere.
+      state._sphere_velocities[sphere_y_index] = -state._sphere_velocities[sphere_y_index] * restitution;
     }
   }
   for (size_t index = 0; index < state._water_heights.size(); ++index) {
@@ -179,6 +178,53 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
   return state;
 }
 
+State apply_sphere_sphere_interaction(State state, const std::vector<float> &sphere_masses, float restitution) {
+  const size_t n_spheres = state._sphere_centers.size() / 3;
+  for (size_t i = 0; i < n_spheres; ++i) {
+    for (size_t j = i + 1; j < n_spheres; ++j) {
+      const std::array<float, 3> direction = {state._sphere_centers[3 * i] - state._sphere_centers[3 * j],
+                                              state._sphere_centers[3 * i + 1] - state._sphere_centers[3 * j + 1],
+                                              state._sphere_centers[3 * i + 2] - state._sphere_centers[3 * j + 2]};
+      float distance = std::hypot(direction[0], direction[1], direction[2]);
+      if (distance <= state._sphere_radii[i] + state._sphere_radii[j]) {
+        const std::array<float, 3> unit_direction = {direction[0] / distance, direction[1] / distance,
+                                                     direction[2] / distance};
+
+        const float correction = (state._sphere_radii[i] + state._sphere_radii[j] - distance) / 2;
+        state._sphere_centers[3 * i] += correction * unit_direction[0];
+        state._sphere_centers[3 * i + 1] += correction * unit_direction[1];
+        state._sphere_centers[3 * i + 2] += correction * unit_direction[2];
+
+        state._sphere_centers[3 * j] -= correction * unit_direction[0];
+        state._sphere_centers[3 * j + 1] -= correction * unit_direction[1];
+        state._sphere_centers[3 * j + 2] -= correction * unit_direction[2];
+
+        const float vi = state._sphere_velocities[3 * i] * unit_direction[0] +
+                         state._sphere_velocities[3 * i + 1] * unit_direction[1] +
+                         state._sphere_velocities[3 * i + 2] * unit_direction[2];
+        const float vj = state._sphere_velocities[3 * j] * unit_direction[0] +
+                         state._sphere_velocities[3 * j + 1] * unit_direction[1] +
+                         state._sphere_velocities[3 * j + 2] * unit_direction[2];
+        const float total_mass = sphere_masses[i] + sphere_masses[j];
+
+        const float new_vi =
+            (sphere_masses[i] * vi + sphere_masses[j] * vj - sphere_masses[j] * (vi - vj) * restitution) / total_mass;
+        const float new_vj =
+            (sphere_masses[i] * vi + sphere_masses[j] * vj - sphere_masses[i] * (vi - vj) * restitution) / total_mass;
+
+        state._sphere_velocities[3 * i] += (new_vi - vi) * unit_direction[0];
+        state._sphere_velocities[3 * i + 1] += (new_vi - vi) * unit_direction[1];
+        state._sphere_velocities[3 * i + 2] += (new_vi - vi) * unit_direction[2];
+
+        state._sphere_velocities[3 * j] += (new_vj - vj) * unit_direction[0];
+        state._sphere_velocities[3 * j + 1] += (new_vj - vj) * unit_direction[1];
+        state._sphere_velocities[3 * j + 2] += (new_vj - vj) * unit_direction[2];
+      }
+    }
+  }
+  return state;
+}
+
 State step(const State &state) {
   const size_t n_spheres = state._sphere_centers.size() / 3;
   if (n_spheres != state._sphere_velocities.size() / 3 || n_spheres != state._sphere_radii.size() ||
@@ -197,7 +243,9 @@ State step(const State &state) {
           sphere_body_heights(state._sphere_centers, state._sphere_radii, state._water_xzs, state._water_heights),
           n_spheres, state._n, state._m),
       sphere_masses);
-  new_state = apply_container_collisions(new_state);
+  constexpr float restitution = 0.1;
+  new_state = apply_sphere_sphere_interaction(new_state, sphere_masses, restitution);
+  new_state = apply_container_collisions(new_state, restitution);
   return new_state;
 }
 
