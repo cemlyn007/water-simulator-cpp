@@ -110,7 +110,6 @@ constexpr float GRAVITY = -9.81;
 
 State apply_sphere_water_interaction(State state, const std::vector<float> &sphere_body_heights,
                                      const std::vector<float> &sphere_masses) {
-
   const size_t n_spheres = state._sphere_centers.size() / 3;
   const float wave_speed = std::min(state._wave_speed, 0.5f * state._spacing / state._time_delta);
   const float c = std::pow(wave_speed / state._spacing, 2);
@@ -119,7 +118,7 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
     for (size_t i = 0; i < state._n; ++i) {
       for (size_t j = 0; j < state._m; ++j) {
-        body_heights[i * state._m + j] += sphere_body_heights[sphere * state._m + j];
+        body_heights[i * state._m + j] += sphere_body_heights[sphere * state._n * state._m + i * state._m + j];
       }
     }
   }
@@ -164,7 +163,7 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
     float sphere_body_height = 0;
     for (size_t i = 0; i < state._n; ++i) {
       for (size_t j = 0; j < state._m; ++j) {
-        sphere_body_height += sphere_body_heights[i * state._m + j];
+        sphere_body_height += sphere_body_heights[sphere * state._n * state._m + i * state._m + j];
       }
     }
     const float force = -sphere_body_height * std::pow(state._spacing, 2) * GRAVITY;
@@ -192,11 +191,17 @@ State apply_sphere_sphere_interaction(State state, const std::vector<float> &sph
 
         const float correction = (state._sphere_radii[i] + state._sphere_radii[j] - distance) / 2;
         state._sphere_centers[3 * i] += correction * unit_direction[0];
-        state._sphere_centers[3 * i + 1] += correction * unit_direction[1];
+        if (state._sphere_centers[3 * i + 1] < state._sphere_radii[i])
+          state._sphere_centers[3 * i + 1] = state._sphere_radii[i];
+        else
+          state._sphere_centers[3 * i + 1] += correction * unit_direction[1];
         state._sphere_centers[3 * i + 2] += correction * unit_direction[2];
 
         state._sphere_centers[3 * j] -= correction * unit_direction[0];
-        state._sphere_centers[3 * j + 1] -= correction * unit_direction[1];
+        if (state._sphere_centers[3 * j + 1] < state._sphere_radii[j])
+          state._sphere_centers[3 * j + 1] = state._sphere_radii[j];
+        else
+          state._sphere_centers[3 * j + 1] += correction * unit_direction[1];
         state._sphere_centers[3 * j + 2] -= correction * unit_direction[2];
 
         const float vi = state._sphere_velocities[3 * i] * unit_direction[0] +

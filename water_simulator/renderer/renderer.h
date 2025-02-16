@@ -11,7 +11,6 @@ namespace water_simulator::renderer {
 
 struct BallConfig {
   std::array<float, 3> color;
-  std::array<float, 3> position;
   float radius;
 };
 
