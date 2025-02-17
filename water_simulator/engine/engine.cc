@@ -1,8 +1,32 @@
 #include "water_simulator/engine/engine.h"
+#include <cassert>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 #include <mdspan>
+#include <vector>
 
 namespace water_simulator::engine {
+
+void saveVectorToCSV(const std::vector<float> &data, const std::string &filename) {
+  std::ofstream file(filename);
+
+  if (!file.is_open()) {
+    std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;
+    return;
+  }
+
+  for (size_t i = 0; i < data.size(); ++i) {
+    file << data[i];
+    if (i < data.size() - 1) {
+      file << ","; // Separate values with commas
+    }
+  }
+  file << "\n"; // End with a newline
+  file.close();
+
+  std::cout << "Data successfully written to " << filename << std::endl;
+}
 
 float sphere_mass(float radius, float density) { return 4.0 / 3.0 * M_PI * std::pow(radius, 3) * density; }
 
@@ -10,6 +34,10 @@ const std::vector<float> sphere_body_heights(const std::vector<float> &sphere_ce
                                              const std::vector<float> &sphere_radii,
                                              const std::vector<float> &water_xzs,
                                              const std::vector<float> &water_heights) {
+  assert(sphere_centers.size() % 3 == 0);
+  assert(water_xzs.size() % 2 == 0);
+  assert(sphere_radii.size() * 3 == sphere_centers.size());
+
   const size_t n_spheres = sphere_centers.size() / 3;
   const size_t n_water_points = water_xzs.size() / 2;
   std::vector<float> body_heights(n_spheres * n_water_points, 0.0);
@@ -50,14 +78,14 @@ const std::vector<float> cross_correlation(const std::span<float> &input, const 
     for (size_t j = 0; j < input_m; ++j) {
       const size_t update_index = i * input_m + j;
       for (size_t ki = 0; ki < kernel_n; ++ki) {
-        size_t get_i = i + ki - kernel_n / 2;
+        int get_i = i + ki - kernel_n / 2;
         if (i + ki < kernel_n / 2) {
           get_i = 0;
         } else if (get_i >= input_n) {
           get_i = input_n - 1;
         }
         for (size_t kj = 0; kj < kernel_m; ++kj) {
-          size_t get_j = j + kj - kernel_m / 2;
+          int get_j = j + kj - kernel_m / 2;
           if (j + kj < kernel_m / 2) {
             get_j = 0;
           } else if (get_j >= input_m) {
@@ -111,8 +139,10 @@ constexpr float GRAVITY = -9.81;
 State apply_sphere_water_interaction(State state, const std::vector<float> &sphere_body_heights,
                                      const std::vector<float> &sphere_masses) {
   const size_t n_spheres = state._sphere_centers.size() / 3;
-  const float wave_speed = std::min(state._wave_speed, 0.5f * state._spacing / state._time_delta);
-  const float c = std::pow(wave_speed / state._spacing, 2);
+
+  assert(state._water_heights.size() == state._n * state._m);
+  assert(sphere_body_heights.size() == n_spheres * state._n * state._m);
+  assert(state._water_velocities.size() == state._water_heights.size());
 
   std::vector<float> body_heights(state._n * state._m, 0.0);
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
@@ -129,6 +159,7 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
   state._body_heights = body_heights;
 
   const float KERNEL_SUM = 4;
+  // state._water_heights = std::vector<float>(state._n * state._m, 1.0);
   auto sums = cross_correlation(state._water_heights,
                                 {
                                     0.0,
@@ -143,22 +174,27 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
                                 },
                                 state._n, state._m, 3, 3);
 
+  // saveVectorToCSV(sums, "/home/cemlyn/Development/water-simulator-cpp/sums.csv");
+  // throw std::runtime_error("Not implemented");
+
+  const float wave_speed = std::min(state._wave_speed, 0.5f * state._spacing / state._time_delta);
+  const float c = std::pow(wave_speed / state._spacing, 2);
+
   // TODO: Export
+  const float POSITIONAL_DAMPING = 1.0f;
+  auto positional_damping = std::min(POSITIONAL_DAMPING * state._time_delta, 1.0f);
   const float VELOCITY_DAMPING = 0.3;
   auto velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * state._time_delta);
   for (size_t index = 0; index < state._water_heights.size(); ++index) {
     state._water_velocities[index] += state._time_delta * c * (sums[index] - KERNEL_SUM * state._water_heights[index]);
-    state._water_velocities[index] *= velocity_damping;
+    state._water_heights[index] += (sums[index] / KERNEL_SUM - state._water_heights[index]) * positional_damping;
   }
 
-  const float POSITIONAL_DAMPING = 1.0f;
-  auto positional_damping = std::min(POSITIONAL_DAMPING * state._time_delta, 1.0f);
   for (size_t index = 0; index < state._water_heights.size(); ++index) {
-    state._water_heights[index] += (sums[index] / KERNEL_SUM - state._water_heights[index]) * positional_damping;
+    state._water_velocities[index] *= velocity_damping;
     state._water_heights[index] += state._time_delta * state._water_velocities[index];
   }
 
-  // Sphere
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
     float sphere_body_height = 0;
     for (size_t i = 0; i < state._n; ++i) {
@@ -166,12 +202,13 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
         sphere_body_height += sphere_body_heights[sphere * state._n * state._m + i * state._m + j];
       }
     }
-    const float force = -sphere_body_height * std::pow(state._spacing, 2) * GRAVITY;
-    const float acceleration = force / sphere_masses[sphere] + GRAVITY;
+
+    const float force = -std::max(sphere_body_height, 0.0f) * std::pow(state._spacing, 2) * GRAVITY;
+    const float acceleration = force / sphere_masses[sphere];
     state._sphere_velocities[3 * sphere + 1] += state._time_delta * acceleration;
+    // This is what he did in the video, but it doesn't make sense to me.
     if (sphere_body_height > 0)
       state._sphere_velocities[3 * sphere + 1] *= 0.999;
-    state._sphere_centers[3 * sphere + 1] += state._time_delta * state._sphere_velocities[3 * sphere + 1];
   }
 
   return state;
@@ -242,15 +279,24 @@ State step(const State &state) {
     sphere_masses[i] = sphere_mass(state._sphere_radii[i], state._sphere_densities[i]);
   }
 
-  State new_state = apply_sphere_water_interaction(
-      state,
-      smooth_sphere_body_heights(
-          sphere_body_heights(state._sphere_centers, state._sphere_radii, state._water_xzs, state._water_heights),
-          n_spheres, state._n, state._m),
-      sphere_masses);
+  State new_state = state;
+
+  for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
+    new_state._sphere_velocities[3 * sphere + 1] += new_state._time_delta * GRAVITY;
+    new_state._sphere_centers[3 * sphere + 1] += new_state._time_delta * new_state._sphere_velocities[3 * sphere + 1];
+  }
+
+  auto smoothed_sphere_body_heights =
+      smooth_sphere_body_heights(sphere_body_heights(new_state._sphere_centers, new_state._sphere_radii,
+                                                     new_state._water_xzs, new_state._water_heights),
+                                 n_spheres, new_state._n, new_state._m);
+
+  new_state = apply_sphere_water_interaction(new_state, smoothed_sphere_body_heights, sphere_masses);
+
   constexpr float restitution = 0.1;
-  new_state = apply_sphere_sphere_interaction(new_state, sphere_masses, restitution);
   new_state = apply_container_collisions(new_state, restitution);
+  new_state = apply_sphere_sphere_interaction(new_state, sphere_masses, restitution);
+
   return new_state;
 }
 
