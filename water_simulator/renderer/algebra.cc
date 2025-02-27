@@ -29,15 +29,11 @@ void print(const std::array<std::array<float, 4>, 4> &matrix) {
 float radians(float degrees) { return (degrees * M_PI) / 180.0; };
 
 float norm(std::array<float, 3> vector) {
-  return std::sqrt(std::pow(vector[0], 2) + std::pow(vector[1], 2) +
-                   std::pow(vector[2], 2));
+  return std::sqrt(std::pow(vector[0], 2) + std::pow(vector[1], 2) + std::pow(vector[2], 2));
 }
 
-std::array<float, 3> update_orbit_camera_position(float azimuth_radians,
-                                                  float elevation_radians,
-                                                  float radius) {
-  return {radius * std::cos(azimuth_radians) * std::cos(elevation_radians),
-          radius * std::sin(elevation_radians),
+std::array<float, 3> update_orbit_camera_position(float azimuth_radians, float elevation_radians, float radius) {
+  return {radius * std::cos(azimuth_radians) * std::cos(elevation_radians), radius * std::sin(elevation_radians),
           radius * std::sin(azimuth_radians) * std::cos(elevation_radians)};
 };
 
@@ -50,8 +46,7 @@ std::array<float, 16> eye4d() {
   return result;
 }
 
-std::array<float, 16> multiply_matrices(const std::array<float, 16> &a,
-                                        const std::array<float, 16> &b) {
+std::array<float, 16> multiply_matrices(const std::array<float, 16> &a, const std::array<float, 16> &b) {
   std::array<float, 16> result;
 
   auto A_md = std::mdspan(a.data(), 4, 4);
@@ -71,8 +66,7 @@ std::array<float, 16> multiply_matrices(const std::array<float, 16> &a,
   return result;
 }
 
-std::array<float, 16> translate(const std::array<float, 16> &matrix,
-                                const std::array<float, 3> &vector) {
+std::array<float, 16> translate(const std::array<float, 16> &matrix, const std::array<float, 3> &vector) {
   // Create a 4x4 identity matrix for scaling.
   std::array<float, 16> translation = eye4d();
 
@@ -88,8 +82,7 @@ std::array<float, 16> translate(const std::array<float, 16> &matrix,
   return multiply_matrices(matrix, translation);
 }
 
-std::array<float, 16> scale(const std::array<float, 16> &matrix,
-                            const std::array<float, 3> &vector) {
+std::array<float, 16> scale(const std::array<float, 16> &matrix, const std::array<float, 3> &vector) {
   // Create a 4x4 identity matrix for scaling.
   std::array<float, 16> scaling = eye4d();
 
@@ -105,12 +98,10 @@ std::array<float, 16> scale(const std::array<float, 16> &matrix,
   return multiply_matrices(matrix, scaling);
 }
 
-std::array<float, 16> look_at(const std::array<float, 3> &eye,
-                              const std::array<float, 3> &center,
+std::array<float, 16> look_at(const std::array<float, 3> &eye, const std::array<float, 3> &center,
                               const std::array<float, 3> &up) {
   // Compute forward vector f = normalize(center - eye)
-  std::array<float, 3> f = {center[0] - eye[0], center[1] - eye[1],
-                            center[2] - eye[2]};
+  std::array<float, 3> f = {center[0] - eye[0], center[1] - eye[1], center[2] - eye[2]};
   float f_norm = std::sqrt(f[0] * f[0] + f[1] * f[1] + f[2] * f[2]);
   f[0] /= f_norm;
   f[1] /= f_norm;
@@ -124,16 +115,13 @@ std::array<float, 16> look_at(const std::array<float, 3> &eye,
   u[2] /= u_norm;
 
   // Compute side vector s = normalize(cross(f, u))
-  std::array<float, 3> s = {f[1] * u[2] - f[2] * u[1],
-                            f[2] * u[0] - f[0] * u[2],
-                            f[0] * u[1] - f[1] * u[0]};
+  std::array<float, 3> s = {f[1] * u[2] - f[2] * u[1], f[2] * u[0] - f[0] * u[2], f[0] * u[1] - f[1] * u[0]};
   float s_norm = std::sqrt(s[0] * s[0] + s[1] * s[1] + s[2] * s[2]);
   s[0] /= s_norm;
   s[1] /= s_norm;
   s[2] /= s_norm;
 
-  u = {s[1] * f[2] - s[2] * f[1], s[2] * f[0] - s[0] * f[2],
-       s[0] * f[1] - s[1] * f[0]};
+  u = {s[1] * f[2] - s[2] * f[1], s[2] * f[0] - s[0] * f[2], s[0] * f[1] - s[1] * f[0]};
 
   std::array<float, 16> flat_result = eye4d();
 
@@ -158,8 +146,7 @@ std::array<float, 16> look_at(const std::array<float, 3> &eye,
   return flat_result;
 }
 
-std::array<float, 16> perspective(float fov, float aspect, float near,
-                                  float far) {
+std::array<float, 16> perspective(float fov, float aspect, float near, float far) {
   float f = 1.0f / std::tan(fov / 2.0f);
   float nf = 1.0f / (near - far);
 

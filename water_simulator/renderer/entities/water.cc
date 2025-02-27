@@ -15,14 +15,12 @@ struct WaterData {
   std::vector<unsigned int> indices;
 };
 
-WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z,
-                                            float cell_size) {
+WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z, float cell_size) {
   std::vector<float> vertices;
   std::vector<float> normals;
   std::vector<unsigned int> indices;
   if (n_cells_x <= 0 || n_cells_z <= 0 || cell_size <= 0.0f) {
-    throw std::invalid_argument(
-        "Invalid grid parameters - must be positive values");
+    throw std::invalid_argument("Invalid grid parameters - must be positive values");
   }
   const int vertices_x = n_cells_x + 1;
   const int vertices_z = n_cells_z + 1;
@@ -57,13 +55,11 @@ WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z,
 }
 
 Water::Water(size_t resolution, float length, float xz_offset)
-    : _shader(read_file("water_simulator/renderer/shaders/basic_lighting.vs"),
-              read_file("water_simulator/renderer/shaders/basic_lighting.fs")),
+    : _resolution(resolution), _shader(read_file("water_simulator/renderer/shaders/basic_lighting.vs"),
+                                       read_file("water_simulator/renderer/shaders/basic_lighting.fs")),
       _xz_vbo(0), _y_vbo(0), _normal_vbo(0), _vao(0), _ebo(0) {
-  WaterData mesh_data = grid_vertices_normals_and_indices(
-      resolution, resolution, length / (resolution));
-  std::transform(mesh_data.vertices.begin(), mesh_data.vertices.end(),
-                 mesh_data.vertices.begin(),
+  WaterData mesh_data = grid_vertices_normals_and_indices(resolution - 1, resolution - 1, length / (resolution - 1));
+  std::transform(mesh_data.vertices.begin(), mesh_data.vertices.end(), mesh_data.vertices.begin(),
                  [&](auto &value) { return value + xz_offset; });
   _xz_vbo = init_vbo(mesh_data.vertices);
   _y_vbo = init_vbo(mesh_data.vertices.size() * sizeof(float), true);
@@ -91,8 +87,7 @@ GLuint Water::init_vbo(const std::vector<float> &vertices) {
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float),
-               vertices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
   return vbo;
 }
 
@@ -100,8 +95,7 @@ GLuint Water::init_vbo(size_t bytes, bool dynamic) {
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, bytes, nullptr,
-               dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, bytes, nullptr, dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
   return vbo;
 }
 
@@ -109,28 +103,23 @@ GLuint Water::init_ebo(const std::vector<unsigned int> &indices) {
   GLuint ebo;
   glGenBuffers(1, &ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
-               indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
   return ebo;
 }
 
-GLuint Water::init_vao(GLuint xz_vbo, GLuint y_vbo, GLuint normal_vbo,
-                       GLuint ebo, const std::vector<float> &vertices) {
+GLuint Water::init_vao(GLuint xz_vbo, GLuint y_vbo, GLuint normal_vbo, GLuint ebo, const std::vector<float> &vertices) {
   GLuint vao;
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
   glBindBuffer(GL_ARRAY_BUFFER, xz_vbo);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float),
-                        reinterpret_cast<void *>(0));
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), reinterpret_cast<void *>(0));
   glEnableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, normal_vbo);
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
-                        reinterpret_cast<void *>(0));
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<void *>(0));
   glEnableVertexAttribArray(1);
   glBindBuffer(GL_ARRAY_BUFFER, y_vbo);
-  glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(float),
-                        reinterpret_cast<void *>(0));
+  glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(float), reinterpret_cast<void *>(0));
   glEnableVertexAttribArray(2);
   glBindVertexArray(0);
   return vao;
@@ -180,15 +169,17 @@ void Water::set_texture(Texture &texture) {
 }
 
 void Water::set_heights(const std::vector<float> &heights) {
+  if (heights.size() != _resolution * _resolution)
+    throw std::invalid_argument("Invalid heights size");
   glBindBuffer(GL_ARRAY_BUFFER, _y_vbo);
-  GL_CALL(glBufferData(GL_ARRAY_BUFFER, heights.size() * sizeof(float),
-                       heights.data(), GL_DYNAMIC_DRAW));
+  GL_CALL(glBufferData(GL_ARRAY_BUFFER, heights.size() * sizeof(float), heights.data(), GL_DYNAMIC_DRAW));
 }
 
 void Water::set_normals(const std::vector<float> &normals) {
+  if (normals.size() != 3 * _resolution * _resolution)
+    throw std::invalid_argument("Invalid heights size");
   glBindBuffer(GL_ARRAY_BUFFER, _normal_vbo);
-  GL_CALL(glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float),
-                       normals.data(), GL_DYNAMIC_DRAW));
+  GL_CALL(glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), normals.data(), GL_DYNAMIC_DRAW));
 }
 
 void Water::draw() {

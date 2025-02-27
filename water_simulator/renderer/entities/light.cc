@@ -63,8 +63,7 @@ GLuint Light::init_vbo(const std::array<float, 72> &vertices) {
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float),
-               vertices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
   return vbo;
 }
 
@@ -72,13 +71,11 @@ GLuint Light::init_ebo(const std::array<unsigned int, 36> &indices) {
   GLuint ebo;
   glGenBuffers(1, &ebo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int),
-               indices.data(), GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
   return ebo;
 }
 
-GLuint Light::init_vao(GLuint vbo, GLuint ebo,
-                       const std::array<float, 72> &vertices) {
+GLuint Light::init_vao(GLuint vbo, GLuint ebo, const std::array<float, 72> &vertices) {
   GLuint vao;
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
@@ -86,8 +83,7 @@ GLuint Light::init_vao(GLuint vbo, GLuint ebo,
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
-                        reinterpret_cast<void *>(0));
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<void *>(0));
   glEnableVertexAttribArray(0);
 
   glBindVertexArray(0);
@@ -96,22 +92,30 @@ GLuint Light::init_vao(GLuint vbo, GLuint ebo,
 
 void Light::set_view(const std::array<float, 16> &view) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_matrix("view", view); }
+  {
+    _shader.set_uniform_matrix("view", view);
+  }
 }
 
 void Light::set_projection(const std::array<float, 16> &projection) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_matrix("projection", projection); }
+  {
+    _shader.set_uniform_matrix("projection", projection);
+  }
 }
 
 void Light::set_model(const std::array<float, 16> &model) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_matrix("model", model); }
+  {
+    _shader.set_uniform_matrix("model", model);
+  }
 }
 
 void Light::set_color(const std::array<float, 3> &color) {
   ShaderContextManager context(_shader);
-  { _shader.set_uniform_vector("objectColor", color); }
+  {
+    _shader.set_uniform_vector("objectColor", color);
+  }
 }
 
 void Light::draw() {

@@ -2,9 +2,7 @@
 
 namespace water_simulator::renderer {
 
-ShaderContextManager::ShaderContextManager(Shader &shader) : _shader(shader) {
-  _shader.use();
-}
+ShaderContextManager::ShaderContextManager(Shader &shader) : _shader(shader) { _shader.use(); }
 
 ShaderContextManager::~ShaderContextManager() { _shader.unuse(); }
 

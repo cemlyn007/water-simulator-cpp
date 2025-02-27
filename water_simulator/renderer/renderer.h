@@ -1,4 +1,5 @@
 #pragma once
+#include "water_simulator/engine/state.h"
 #include "water_simulator/renderer/camera.h"
 #include "water_simulator/renderer/entities/ball.h"
 #include "water_simulator/renderer/entities/container.h"
@@ -7,6 +8,11 @@
 #include <GLFW/glfw3.h>
 
 namespace water_simulator::renderer {
+
+struct BallConfig {
+  std::array<float, 3> color;
+  float radius;
+};
 
 void init();
 
@@ -28,16 +34,17 @@ private:
   std::array<float, 3> _camera_position;
 
   Camera _camera;
-  entities::Ball _ball;
   entities::Light _light;
   entities::Container _container;
   entities::Water _water;
+  std::vector<entities::Ball> _balls;
 
 public:
-  Renderer(int window_width, int window_height);
+  Renderer(int window_width, int window_height, size_t resolution, float spacing,
+           const std::vector<BallConfig> &ball_configs);
   ~Renderer();
 
-  void render();
+  void render(const engine::State &state);
   bool should_close();
 
 private:
@@ -45,16 +52,11 @@ private:
   void update_camera();
 
   GLFWwindow *create_window(int width, int height);
-  static void key_callback(GLFWwindow *window, int key, int scancode,
-                           int action, int mods);
-  static void mouse_button_callback(GLFWwindow *window, int button, int action,
-                                    int mods);
-  static void cursor_position_callback(GLFWwindow *window, double xpos,
-                                       double ypos);
-  static void scroll_callback(GLFWwindow *window, double xoffset,
-                              double yoffset);
-  static void framebuffer_size_callback(GLFWwindow *window, int width,
-                                        int height);
+  static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
+  static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
+  static void cursor_position_callback(GLFWwindow *window, double xpos, double ypos);
+  static void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
+  static void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 };
 
 } // namespace water_simulator::renderer
