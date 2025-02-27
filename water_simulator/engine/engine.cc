@@ -1,32 +1,10 @@
 #include "water_simulator/engine/engine.h"
 #include <cassert>
 #include <cmath>
-#include <fstream>
-#include <iostream>
 #include <mdspan>
 #include <vector>
 
 namespace water_simulator::engine {
-
-void saveVectorToCSV(const std::vector<float> &data, const std::string &filename) {
-  std::ofstream file(filename);
-
-  if (!file.is_open()) {
-    std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;
-    return;
-  }
-
-  for (size_t i = 0; i < data.size(); ++i) {
-    file << data[i];
-    if (i < data.size() - 1) {
-      file << ","; // Separate values with commas
-    }
-  }
-  file << "\n"; // End with a newline
-  file.close();
-
-  std::cout << "Data successfully written to " << filename << std::endl;
-}
 
 float sphere_mass(float radius, float density) { return 4.0 / 3.0 * M_PI * std::pow(radius, 3) * density; }
 
@@ -40,25 +18,30 @@ const std::vector<float> sphere_body_heights(const std::vector<float> &sphere_ce
 
   const size_t n_spheres = sphere_centers.size() / 3;
   const size_t n_water_points = water_xzs.size() / 2;
-  // std::vector<float> body_heights(n_spheres * n_water_points, 0.0001);
-  // return body_heights;
-  std::vector<float> body_heights(n_spheres * n_water_points, 0);
-  return body_heights;
+
+  // Using double for improved precision
+  std::vector<float> body_heights(n_spheres * n_water_points, 0.0);
+
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
+    // Cache sphere center y coordinate
+    const double sphere_y = sphere_centers[3 * sphere + 1];
+    const double sphere_x = sphere_centers[3 * sphere];
+    const double sphere_z = sphere_centers[3 * sphere + 2];
+    const double sphere_radius = sphere_radii[sphere];
+    const double sphere_radius2 = sphere_radius * sphere_radius; // sphere_radius squared
+
     for (size_t water_index = 0; water_index < n_water_points; ++water_index) {
       const double x = water_xzs[2 * water_index];
       const double z = water_xzs[2 * water_index + 1];
       const double y = water_heights[water_index];
-      const double sphere_x = sphere_centers[3 * sphere];
-      const double sphere_z = sphere_centers[3 * sphere + 2];
-      const double sphere_radius = sphere_radii[sphere];
-      const double distance = std::sqrt(std::pow(x - sphere_x, 2) + std::pow(z - sphere_z, 2));
-      if (distance < sphere_radius) {
-        const double half_body_height = std::sqrt(std::pow(sphere_radius, 2) - std::pow(distance, 2));
-        // If the sphere center - the half body height is above the water, then
-        // the sphere is above the water.
-        const double min_body_height = std::max(sphere_centers[3 * sphere + 1] - half_body_height, 0.0);
-        const double max_body_height = std::min(sphere_centers[3 * sphere + 1] + half_body_height, y);
+      const double dx = x - sphere_x;
+      const double dz = z - sphere_z;
+      const double distance2 = dx * dx + dz * dz;
+      if (distance2 < sphere_radius2) {
+        const double half_body_height = std::sqrt(sphere_radius2 - distance2);
+        // If the sphere center - the half body height is above the water, then the sphere is above the water.
+        const double min_body_height = std::max(sphere_y - half_body_height, 0.0);
+        const double max_body_height = std::min(sphere_y + half_body_height, y);
         const double body_height = max_body_height - min_body_height;
         if (body_height > 0) {
           body_heights[sphere * n_water_points + water_index] = body_height;
@@ -104,7 +87,6 @@ const std::vector<float> cross_correlation(std::span<float> input, const std::ve
 
 std::vector<float> smooth_sphere_body_heights(std::vector<float> body_heights, const size_t n_spheres, const size_t n,
                                               const size_t m) {
-  // Smoothen the body height field.
   const std::vector<float> kernel(9, 1.0f / 9.0f);
   auto span_body_heights = std::span(body_heights);
   for (size_t index = 0; index < 2; ++index) {
@@ -122,18 +104,16 @@ State apply_container_collisions(State state, float restitution) {
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
     size_t sphere_y_index = 3 * sphere + 1;
     if (state._sphere_centers[sphere_y_index] <= state._sphere_radii[sphere]) {
-      std::cout << "Sphere " << sphere << " BANG" << std::endl;
       state._sphere_centers[sphere_y_index] = state._sphere_radii[sphere];
-      // std::cout << "Sphere " << sphere << " : " << state._sphere_velocities[sphere_y_index] << std::endl;
       state._sphere_velocities[sphere_y_index] = -state._sphere_velocities[sphere_y_index] * restitution;
     }
   }
-  // for (size_t index = 0; index < state._water_heights.size(); ++index) {
-  //   if (state._water_heights[index] < 0.0) {
-  //     state._water_heights[index] = 0.0;
-  //     state._water_velocities[index] = 0.0;
-  //   }
-  // }
+  for (size_t index = 0; index < state._water_heights.size(); ++index) {
+    if (state._water_heights[index] < 0.0) {
+      state._water_heights[index] = 0.0;
+      state._water_velocities[index] = 0.0;
+    }
+  }
   return state;
 };
 
@@ -162,7 +142,7 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
   }
   state._body_heights = body_heights;
 
-  const float KERNEL_SUM = 4;
+  constexpr float KERNEL_SUM = 4;
   auto sums = cross_correlation(state._water_heights,
                                 {
                                     0.0,
@@ -180,9 +160,9 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
   const float wave_speed = std::min(state._wave_speed, 0.5f * state._spacing / state._time_delta);
   const float c = std::pow(wave_speed / state._spacing, 2);
 
-  const float POSITIONAL_DAMPING = 1.0f;
+  constexpr float POSITIONAL_DAMPING = 1.0f;
   auto positional_damping = std::min(POSITIONAL_DAMPING * state._time_delta, 1.0f);
-  const float VELOCITY_DAMPING = 0.3;
+  constexpr float VELOCITY_DAMPING = 0.3;
   auto velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * state._time_delta);
   for (size_t index = 0; index < state._water_heights.size(); ++index) {
     state._water_velocities[index] += state._time_delta * c * (sums[index] - KERNEL_SUM * state._water_heights[index]);
@@ -266,10 +246,7 @@ State apply_sphere_sphere_interaction(State state, const std::vector<float> &sph
   return state;
 }
 
-static size_t counter = 0;
-
 State step(const State &state) {
-  ++counter;
   const size_t n_spheres = state._sphere_centers.size() / 3;
   if (n_spheres != state._sphere_velocities.size() / 3 || n_spheres != state._sphere_radii.size() ||
       n_spheres != state._sphere_densities.size()) {
@@ -282,22 +259,11 @@ State step(const State &state) {
   }
 
   State new_state = state;
-
-  // 59 is where the magic must have happened, effect seen at 60.
-  // Interesting that the centers are the same, but the velocities are different.
-  std::cout << "Counter: " << counter << std::endl;
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
-    std::cout << "Sphere " << sphere << " : " << state._sphere_centers[3 * sphere + 1] << ", "
-              << state._sphere_velocities[3 * sphere + 1] << std::endl;
-
     new_state._sphere_velocities[3 * sphere + 1] += new_state._time_delta * GRAVITY;
 
     new_state._sphere_centers[3 * sphere + 1] += new_state._time_delta * new_state._sphere_velocities[3 * sphere + 1];
   }
-
-  // if (counter > 64) {
-  //   throw std::runtime_error("Counter exceeded 64");
-  // }
 
   auto smoothed_sphere_body_heights =
       smooth_sphere_body_heights(sphere_body_heights(new_state._sphere_centers, new_state._sphere_radii,
@@ -306,9 +272,9 @@ State step(const State &state) {
 
   new_state = apply_sphere_water_interaction(new_state, smoothed_sphere_body_heights, sphere_masses);
 
-  constexpr float restitution = 0.1;
-  new_state = apply_container_collisions(new_state, restitution);
-  // new_state = apply_sphere_sphere_interaction(new_state, sphere_masses, restitution);
+  constexpr float RESTITUTION = 0.1;
+  new_state = apply_container_collisions(new_state, RESTITUTION);
+  new_state = apply_sphere_sphere_interaction(new_state, sphere_masses, RESTITUTION);
 
   return new_state;
 }
