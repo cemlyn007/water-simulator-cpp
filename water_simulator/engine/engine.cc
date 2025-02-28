@@ -19,7 +19,6 @@ const std::vector<float> sphere_body_heights(const std::vector<float> &sphere_ce
   const size_t n_spheres = sphere_centers.size() / 3;
   const size_t n_water_points = water_xzs.size() / 2;
 
-  // Using double for improved precision
   std::vector<float> body_heights(n_spheres * n_water_points, 0.0);
 
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
@@ -157,11 +156,11 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
                                 },
                                 state._n, state._m, 3, 3);
 
-  const float wave_speed = std::min(state._wave_speed, 0.5f * state._spacing / state._time_delta);
+  double wave_speed = std::min(state._wave_speed, 0.5 * state._spacing / state._time_delta);
   const float c = std::pow(wave_speed / state._spacing, 2);
 
-  constexpr float POSITIONAL_DAMPING = 1.0f;
-  auto positional_damping = std::min(POSITIONAL_DAMPING * state._time_delta, 1.0f);
+  constexpr double POSITIONAL_DAMPING = 1.0f;
+  double positional_damping = std::min(POSITIONAL_DAMPING * state._time_delta, 1.0);
   constexpr float VELOCITY_DAMPING = 0.3;
   auto velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * state._time_delta);
   for (size_t index = 0; index < state._water_heights.size(); ++index) {
@@ -184,10 +183,11 @@ State apply_sphere_water_interaction(State state, const std::vector<float> &sphe
 
     const float force = -std::max(sphere_body_height, 0.0f) * std::pow(state._spacing, 2) * GRAVITY;
     const float acceleration = force / sphere_masses[sphere];
-    state._sphere_velocities[3 * sphere + 1] += state._time_delta * acceleration;
-    // This is what he did in the video, but it doesn't make sense to me.
-    if (sphere_body_height > 0)
+
+    if (sphere_body_height > 0) {
+      state._sphere_velocities[3 * sphere + 1] += state._time_delta * acceleration;
       state._sphere_velocities[3 * sphere + 1] *= 0.999;
+    }
   }
 
   return state;
@@ -261,7 +261,6 @@ State step(const State &state) {
   State new_state = state;
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
     new_state._sphere_velocities[3 * sphere + 1] += new_state._time_delta * GRAVITY;
-
     new_state._sphere_centers[3 * sphere + 1] += new_state._time_delta * new_state._sphere_velocities[3 * sphere + 1];
   }
 

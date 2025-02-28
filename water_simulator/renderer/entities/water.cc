@@ -6,7 +6,6 @@
 #include <array>
 #include <string>
 #include <vector>
-
 namespace water_simulator::renderer::entities {
 
 struct WaterData {
@@ -15,15 +14,15 @@ struct WaterData {
   std::vector<unsigned int> indices;
 };
 
-WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z, float cell_size) {
+WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z, double cell_size) {
   std::vector<float> vertices;
   std::vector<float> normals;
   std::vector<unsigned int> indices;
   if (n_cells_x <= 0 || n_cells_z <= 0 || cell_size <= 0.0f) {
     throw std::invalid_argument("Invalid grid parameters - must be positive values");
   }
-  const int vertices_x = n_cells_x + 1;
-  const int vertices_z = n_cells_z + 1;
+  const int vertices_x = n_cells_x;
+  const int vertices_z = n_cells_z;
   const int total_vertices = vertices_x * vertices_z;
   vertices.reserve(total_vertices);
   normals.reserve(total_vertices);
@@ -37,8 +36,9 @@ WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z, float 
       normals.push_back(0.0f);
     }
   }
-  for (int x = 0; x < n_cells_x; ++x) {
-    for (int z = 0; z < n_cells_z; ++z) {
+
+  for (int x = 0; x < n_cells_x - 1; ++x) {
+    for (int z = 0; z < n_cells_z - 1; ++z) {
       unsigned int top_left = x * vertices_z + z;
       unsigned int top_right = top_left + 1;
       unsigned int bottom_left = (x + 1) * vertices_z + z;
@@ -58,12 +58,12 @@ Water::Water(size_t resolution, float length, float xz_offset)
     : _resolution(resolution), _shader(read_file("water_simulator/renderer/shaders/basic_lighting.vs"),
                                        read_file("water_simulator/renderer/shaders/basic_lighting.fs")),
       _xz_vbo(0), _y_vbo(0), _normal_vbo(0), _vao(0), _ebo(0) {
-  WaterData mesh_data = grid_vertices_normals_and_indices(resolution - 1, resolution - 1, length / (resolution - 1));
+  WaterData mesh_data = grid_vertices_normals_and_indices(_resolution, _resolution, length / (_resolution));
   std::transform(mesh_data.vertices.begin(), mesh_data.vertices.end(), mesh_data.vertices.begin(),
                  [&](auto &value) { return value + xz_offset; });
   _xz_vbo = init_vbo(mesh_data.vertices);
-  _y_vbo = init_vbo(mesh_data.vertices.size() * sizeof(float), true);
-  _normal_vbo = init_vbo(3 * mesh_data.vertices.size() * sizeof(float), true);
+  _y_vbo = init_vbo(_resolution * _resolution * sizeof(float), true);
+  _normal_vbo = init_vbo(3 * _resolution * _resolution * sizeof(float), true);
   _ebo = init_ebo(mesh_data.indices);
   _vao = init_vao(_xz_vbo, _y_vbo, _normal_vbo, _ebo, mesh_data.vertices);
   _indices = mesh_data.indices.size();
@@ -169,15 +169,15 @@ void Water::set_texture(Texture &texture) {
 }
 
 void Water::set_heights(const std::vector<float> &heights) {
-  if (heights.size() != _resolution * _resolution)
+  if (heights.size() != (_resolution * _resolution))
     throw std::invalid_argument("Invalid heights size");
   glBindBuffer(GL_ARRAY_BUFFER, _y_vbo);
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, heights.size() * sizeof(float), heights.data(), GL_DYNAMIC_DRAW));
 }
 
 void Water::set_normals(const std::vector<float> &normals) {
-  if (normals.size() != 3 * _resolution * _resolution)
-    throw std::invalid_argument("Invalid heights size");
+  if (normals.size() != (3 * _resolution * _resolution))
+    throw std::invalid_argument("Invalid normals size");
   glBindBuffer(GL_ARRAY_BUFFER, _normal_vbo);
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), normals.data(), GL_DYNAMIC_DRAW));
 }

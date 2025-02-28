@@ -28,14 +28,13 @@ void terminate() {
   glfwTerminate();
 }
 
-constexpr static float WALL_SIZE = 2.02;
-constexpr static float WALL_THICKNESS = 0.1f;
+constexpr static float WALL_THICKNESS = 0.1;
 
 Renderer::Renderer(int window_width, int window_height, size_t resolution, float spacing,
                    const std::vector<BallConfig> &ball_configs)
     : _window(create_window(window_width, window_height)), _mouse_click(false), _escape_pressed(false),
-      _camera(window_width, window_height), _light(), _container(WALL_SIZE, WALL_THICKNESS),
-      _water(resolution, WALL_SIZE, 0.0), _balls(ball_configs.size()) {
+      _camera(window_width, window_height), _light(), _container((resolution - 1) * spacing, WALL_THICKNESS),
+      _water(resolution, resolution * spacing, 0.0), _balls(ball_configs.size()) {
 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -60,8 +59,9 @@ Renderer::Renderer(int window_width, int window_height, size_t resolution, float
     ball.set_light_position(light_position);
   }
 
+  float wall_size = (resolution - 1) * spacing;
   auto container_water_model =
-      translate(eye4d(), {-(WALL_SIZE + WALL_THICKNESS) / 2.0, 0.0, -(WALL_SIZE + WALL_THICKNESS) / 2.0});
+      translate(eye4d(), {-(wall_size + WALL_THICKNESS) / 2.0f, 0.0, -(wall_size + WALL_THICKNESS) / 2.0f});
 
   _container.set_color({0.7, 0.7, 0.7});
   _container.set_model(container_water_model);
