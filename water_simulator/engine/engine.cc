@@ -7,10 +7,9 @@
 
 namespace water_simulator::engine {
 
-const std::vector<float> sphere_body_heights(const std::vector<float> &sphere_centers,
-                                             const std::vector<float> &sphere_radii,
-                                             const std::vector<float> &water_xzs,
-                                             const std::vector<float> &water_heights) {
+void sphere_body_heights(std::vector<float> &body_heights, const std::vector<float> &sphere_centers,
+                         const std::vector<float> &sphere_radii, const std::vector<float> &water_xzs,
+                         const std::vector<float> &water_heights) {
   assert(sphere_centers.size() % 3 == 0);
   assert(water_xzs.size() % 2 == 0);
   assert(sphere_radii.size() * 3 == sphere_centers.size());
@@ -18,15 +17,13 @@ const std::vector<float> sphere_body_heights(const std::vector<float> &sphere_ce
   const size_t n_spheres = sphere_centers.size() / 3;
   const size_t n_water_points = water_xzs.size() / 2;
 
-  std::vector<float> body_heights(n_spheres * n_water_points, 0.0);
-
+  std::fill(body_heights.begin(), body_heights.end(), 0.0);
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
-    // Cache sphere center y coordinate
     const double sphere_y = sphere_centers[3 * sphere + 1];
     const double sphere_x = sphere_centers[3 * sphere];
     const double sphere_z = sphere_centers[3 * sphere + 2];
     const double sphere_radius = sphere_radii[sphere];
-    const double sphere_radius2 = sphere_radius * sphere_radius; // sphere_radius squared
+    const double sphere_radius2 = sphere_radius * sphere_radius;
 
     for (size_t water_index = 0; water_index < n_water_points; ++water_index) {
       const double x = water_xzs[2 * water_index];
@@ -37,7 +34,6 @@ const std::vector<float> sphere_body_heights(const std::vector<float> &sphere_ce
       const double distance2 = dx * dx + dz * dz;
       if (distance2 < sphere_radius2) {
         const double half_body_height = std::sqrt(sphere_radius2 - distance2);
-        // If the sphere center - the half body height is above the water, then the sphere is above the water.
         const double min_body_height = std::max(sphere_y - half_body_height, 0.0);
         const double max_body_height = std::min(sphere_y + half_body_height, y);
         const double body_height = max_body_height - min_body_height;
@@ -47,13 +43,12 @@ const std::vector<float> sphere_body_heights(const std::vector<float> &sphere_ce
       }
     }
   }
-  return body_heights;
 }
 
 void cross_correlation(std::span<float> output, const std::span<float> input, const std::array<float, 9> &kernel,
                        const size_t input_n, const size_t input_m) {
-  const size_t kernel_n = 3;
-  const size_t kernel_m = 3;
+  constexpr size_t kernel_n = 3;
+  constexpr size_t kernel_m = 3;
   if (input.size() != input_n * input_m)
     throw std::runtime_error("Invalid input size");
   if (output.size() != input.size())
@@ -85,8 +80,8 @@ void cross_correlation(std::span<float> output, const std::span<float> input, co
 
 void cross_correlation(std::vector<float> &output, const std::span<float> input, const std::array<float, 9> &kernel,
                        const size_t input_n, const size_t input_m) {
-  const size_t kernel_n = 3;
-  const size_t kernel_m = 3;
+  constexpr size_t kernel_n = 3;
+  constexpr size_t kernel_m = 3;
   if (input.size() != input_n * input_m)
     throw std::runtime_error("Invalid input size");
   if (output.size() != input.size())
@@ -150,11 +145,11 @@ static constexpr std::array<float, 9> NEIGHBOUR_KERNEL{
     0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
 };
 static constexpr float NEIGHBOUR_KERNEL_SUM = 4;
-void apply_sphere_water_interaction(State &state, const std::vector<float> &sphere_body_heights) {
+void apply_sphere_water_interaction(State &state) {
   const size_t n_spheres = state._sphere_centers.size() / 3;
 
   assert(state._water_heights.size() == state._n * state._m);
-  assert(sphere_body_heights.size() == n_spheres * state._n * state._m);
+  assert(state._sphere_body_heights.size() == n_spheres * state._n * state._m);
   assert(state._water_velocities.size() == state._water_heights.size());
   assert(state._sphere_velocities.size() == 3 * n_spheres);
 
@@ -162,7 +157,7 @@ void apply_sphere_water_interaction(State &state, const std::vector<float> &sphe
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
     for (size_t i = 0; i < state._n; ++i) {
       for (size_t j = 0; j < state._m; ++j) {
-        body_heights[i * state._m + j] += sphere_body_heights[sphere * state._n * state._m + i * state._m + j];
+        body_heights[i * state._m + j] += state._sphere_body_heights[sphere * state._n * state._m + i * state._m + j];
       }
     }
   }
@@ -198,7 +193,7 @@ void apply_sphere_water_interaction(State &state, const std::vector<float> &sphe
     float sphere_body_height = 0;
     for (size_t i = 0; i < state._n; ++i) {
       for (size_t j = 0; j < state._m; ++j) {
-        sphere_body_height += sphere_body_heights[sphere * state._n * state._m + i * state._m + j];
+        sphere_body_height += state._sphere_body_heights[sphere * state._n * state._m + i * state._m + j];
       }
     }
 
@@ -273,11 +268,11 @@ void step(State &state) {
     state._sphere_centers[3 * sphere + 1] += state._time_delta * state._sphere_velocities[3 * sphere + 1];
   }
 
-  auto the_sphere_body_heights =
-      sphere_body_heights(state._sphere_centers, state._sphere_radii, state._water_xzs, state._water_heights);
-  smooth_body_heights(the_sphere_body_heights, n_spheres, state._n, state._m);
+  sphere_body_heights(state._sphere_body_heights, state._sphere_centers, state._sphere_radii, state._water_xzs,
+                      state._water_heights);
+  smooth_body_heights(state._sphere_body_heights, n_spheres, state._n, state._m);
 
-  apply_sphere_water_interaction(state, the_sphere_body_heights);
+  apply_sphere_water_interaction(state);
 
   constexpr float RESTITUTION = 0.1;
   apply_container_collisions(state, RESTITUTION);
