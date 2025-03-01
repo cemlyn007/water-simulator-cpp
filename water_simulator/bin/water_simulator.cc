@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
   while (!renderer.should_close()) {
     state._time_delta = us.count() / 1000000.0;
-    state = engine::step(state);
+    engine::step(state);
     renderer.render(state);
     auto end = std::chrono::high_resolution_clock::now();
     us = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

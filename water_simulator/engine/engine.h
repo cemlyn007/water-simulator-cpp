@@ -3,6 +3,6 @@
 
 namespace water_simulator::engine {
 
-State step(const State &state);
+void step(State &state);
 
 } // namespace water_simulator::engine

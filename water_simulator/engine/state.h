@@ -24,5 +24,6 @@ public:
 
   std::vector<float> _sphere_radii;
   std::vector<float> _sphere_densities;
+  std::vector<float> _sphere_masses;
 };
 } // namespace water_simulator::engine
