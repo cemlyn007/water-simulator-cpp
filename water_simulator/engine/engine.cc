@@ -153,22 +153,16 @@ void apply_sphere_water_interaction(State &state) {
   assert(state._water_velocities.size() == state._water_heights.size());
   assert(state._sphere_velocities.size() == 3 * n_spheres);
 
-  std::vector<float> body_heights(state._n * state._m, 0.0);
-  for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
-    for (size_t i = 0; i < state._n; ++i) {
-      for (size_t j = 0; j < state._m; ++j) {
-        body_heights[i * state._m + j] += state._sphere_body_heights[sphere * state._n * state._m + i * state._m + j];
-      }
-    }
-  }
-
   for (size_t index = 0; index < state._water_heights.size(); ++index) {
-    state._water_heights[index] += 0.05 * (body_heights[index] - state._body_heights[index]);
+    float body_height = 0;
+    for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
+      body_height += state._sphere_body_heights[sphere * state._n * state._m + index];
+    }
+    state._water_heights[index] += 0.05 * (body_height - state._body_heights[index]);
+    state._body_heights[index] = body_height;
   }
-  state._body_heights = body_heights;
 
-  std::vector<float> sums(state._water_heights.size());
-  cross_correlation(sums, state._water_heights, NEIGHBOUR_KERNEL, state._n, state._m);
+  cross_correlation(state._neighbour_sums, state._water_heights, NEIGHBOUR_KERNEL, state._n, state._m);
 
   double wave_speed = std::min(state._wave_speed, 0.5 * state._spacing / state._time_delta);
   const float c = std::pow(wave_speed / state._spacing, 2);
@@ -179,9 +173,9 @@ void apply_sphere_water_interaction(State &state) {
   auto velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * state._time_delta);
   for (size_t index = 0; index < state._water_heights.size(); ++index) {
     state._water_velocities[index] +=
-        state._time_delta * c * (sums[index] - NEIGHBOUR_KERNEL_SUM * state._water_heights[index]);
+        state._time_delta * c * (state._neighbour_sums[index] - NEIGHBOUR_KERNEL_SUM * state._water_heights[index]);
     state._water_heights[index] +=
-        (sums[index] / NEIGHBOUR_KERNEL_SUM - state._water_heights[index]) * positional_damping;
+        (state._neighbour_sums[index] / NEIGHBOUR_KERNEL_SUM - state._water_heights[index]) * positional_damping;
   }
 
   for (size_t index = 0; index < state._water_heights.size(); ++index) {

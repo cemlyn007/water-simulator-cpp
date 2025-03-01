@@ -27,5 +27,6 @@ public:
   std::vector<float> _sphere_masses;
 
   std::vector<float> _sphere_body_heights;
+  std::vector<float> _neighbour_sums;
 };
 } // namespace water_simulator::engine
