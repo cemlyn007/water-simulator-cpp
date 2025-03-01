@@ -45,8 +45,9 @@ void sphere_body_heights(std::vector<float> &body_heights, const std::vector<flo
   }
 }
 
-void cross_correlation(std::span<float> output, const std::span<float> input, const std::array<float, 9> &kernel,
-                       const size_t input_n, const size_t input_m) {
+template <typename S, typename T>
+void cross_correlation_impl(S &output, const T &input, const std::array<float, 9> &kernel, const size_t input_n,
+                            const size_t input_m) {
   constexpr size_t kernel_n = 3;
   constexpr size_t kernel_m = 3;
   if (input.size() != input_n * input_m)
@@ -78,48 +79,32 @@ void cross_correlation(std::span<float> output, const std::span<float> input, co
   }
 }
 
+void cross_correlation(std::vector<float> &output, const std::vector<float> &input, const std::array<float, 9> &kernel,
+                       const size_t input_n, const size_t input_m) {
+  cross_correlation_impl<std::vector<float> &, const std::vector<float> &>(output, input, kernel, input_n, input_m);
+}
+
 void cross_correlation(std::vector<float> &output, const std::span<float> input, const std::array<float, 9> &kernel,
                        const size_t input_n, const size_t input_m) {
-  constexpr size_t kernel_n = 3;
-  constexpr size_t kernel_m = 3;
-  if (input.size() != input_n * input_m)
-    throw std::runtime_error("Invalid input size");
-  if (output.size() != input.size())
-    throw std::runtime_error("Invalid output size");
-  for (size_t i = 0; i < input_n; ++i) {
-    for (size_t j = 0; j < input_m; ++j) {
-      float output_element = 0.0;
-      for (size_t ki = 0; ki < kernel_n; ++ki) {
-        size_t get_i = i + ki - kernel_n / 2;
-        if (i + ki < kernel_n / 2) {
-          get_i = 0;
-        } else if (get_i >= input_n) {
-          get_i = input_n - 1;
-        }
-        for (size_t kj = 0; kj < kernel_m; ++kj) {
-          size_t get_j = j + kj - kernel_m / 2;
-          if (j + kj < kernel_m / 2) {
-            get_j = 0;
-          } else if (get_j >= input_m) {
-            get_j = input_m - 1;
-          }
-          output_element += input[get_i * input_m + get_j] * kernel[ki * kernel_m + kj];
-        }
-      }
-      output[i * input_m + j] = output_element;
-    }
-  }
+  cross_correlation_impl<std::vector<float> &, const std::span<float>>(output, input, kernel, input_n, input_m);
+}
+
+void cross_correlation(std::span<float> output, const std::vector<float> &input, const std::array<float, 9> &kernel,
+                       const size_t input_n, const size_t input_m) {
+  cross_correlation_impl<std::span<float>, const std::vector<float> &>(output, input, kernel, input_n, input_m);
 }
 
 static constexpr std::array<float, 9> SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL{1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f,
                                                                         1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f,
                                                                         1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f};
+
 void smooth_body_heights(std::span<float> body_heights, const size_t n_spheres, const size_t n, const size_t m) {
-  std::vector<float> smoothed(n * m);
+  static thread_local std::vector<float> smoothed(n * m);
+  smoothed.resize(n * m);
   for (size_t sphere_index = 0; sphere_index < n_spheres; ++sphere_index) {
     auto sphere_span = body_heights.subspan(sphere_index * n * m, n * m);
     cross_correlation(smoothed, sphere_span, SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL, n, m);
-    cross_correlation(sphere_span, std::span(smoothed), SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL, n, m);
+    cross_correlation(sphere_span, smoothed, SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL, n, m);
   }
 }
 
