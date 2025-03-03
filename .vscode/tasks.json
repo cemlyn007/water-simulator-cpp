@@ -6,7 +6,8 @@
         {
             "label": "Bazel FlameGraph",
             "type": "shell",
-            "command": "${workspaceFolder}/scripts/flamegraph.sh"
+            "command": "${workspaceFolder}/scripts/flamegraph.sh",
+            "problemMatcher": []
         },
         {
             "type": "bazel",
