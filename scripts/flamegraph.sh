@@ -13,7 +13,7 @@ mkdir -p $tmp_directory
 echo "Require sudo to run perf:"
 sudo perf record -a -b -g --output=$perf_file_path $workspace/bazel-bin/water_simulator/bin/water_simulator && sudo chown $USER $perf_file_path
 
-perf script --input=$perf_file_path | third_party/FlameGraph/stackcollapse-perf.pl | $workspace/third_party/FlameGraph/flamegraph.pl > $svg_file_path
+perf script --input=$perf_file_path | $workspace/third_party/FlameGraph/stackcollapse-perf.pl | $workspace/third_party/FlameGraph/flamegraph.pl > $svg_file_path
 
 if [ -x "$(command -v google-chrome)" ]; then
   google-chrome $svg_file_path
