@@ -3,3 +3,7 @@ build --enable_platform_specific_config
 
 # Apply C++23 only on macOS
 build:macos --cxxopt=-std=c++23
+
+build:opt --copt=-O3
+build:opt --copt=-march=native
+build:opt --copt=-ffast-math
