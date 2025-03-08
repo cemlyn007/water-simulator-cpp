@@ -117,11 +117,31 @@ void apply_container_collisions(State &state, float restitution) {
       state._sphere_centers[sphere_y_index] = state._sphere_radii[sphere];
       state._sphere_velocities[sphere_y_index] = -state._sphere_velocities[sphere_y_index] * restitution;
     }
-  }
-  for (size_t index = 0; index < state._water_heights.size(); ++index) {
-    if (state._water_heights[index] < 0.0) {
-      state._water_heights[index] = 0.0;
-      state._water_velocities[index] = 0.0;
+
+    const float half_wall_size_n = ((state._n - 1) * state._spacing) / 2.0f;
+    size_t sphere_z_index = sphere * 3 + 2;
+    // North wall:
+    if (half_wall_size_n - state._sphere_centers[sphere_z_index] < state._sphere_radii[sphere]) {
+      state._sphere_centers[sphere_z_index] = half_wall_size_n - state._sphere_radii[sphere];
+      state._sphere_velocities[sphere_z_index] = -state._sphere_velocities[sphere_z_index] * restitution;
+    }
+    // South wall:
+    if (state._sphere_centers[sphere_z_index] - state._sphere_radii[sphere] < -half_wall_size_n) {
+      state._sphere_centers[sphere_z_index] = -half_wall_size_n + state._sphere_radii[sphere];
+      state._sphere_velocities[sphere_z_index] = -state._sphere_velocities[sphere_z_index] * restitution;
+    }
+
+    const float half_wall_size_m = ((state._m - 1) * state._spacing) / 2.0f;
+    size_t sphere_x_index = sphere * 3;
+    // East wall:
+    if (half_wall_size_m - state._sphere_centers[sphere_x_index] < state._sphere_radii[sphere]) {
+      state._sphere_centers[sphere_x_index] = half_wall_size_m - state._sphere_radii[sphere];
+      state._sphere_velocities[sphere_x_index] = -state._sphere_velocities[sphere_x_index] * restitution;
+    }
+    // West wall:
+    if (state._sphere_centers[sphere_x_index] - state._sphere_radii[sphere] < -half_wall_size_m) {
+      state._sphere_centers[sphere_x_index] = -half_wall_size_m + state._sphere_radii[sphere];
+      state._sphere_velocities[sphere_x_index] = -state._sphere_velocities[sphere_x_index] * restitution;
     }
   }
 };
@@ -255,9 +275,9 @@ void step(State &state) {
   apply_sphere_water_interaction(state);
 
   constexpr float RESTITUTION = 0.1;
-  apply_container_collisions(state, RESTITUTION);
   apply_sphere_sphere_interaction(state._sphere_centers, state._sphere_velocities, state._sphere_radii,
                                   state._sphere_masses, RESTITUTION);
+  apply_container_collisions(state, RESTITUTION);
 }
 
 std::optional<std::pair<size_t, float>> raycast(const std::vector<float> &sphere_centers,
@@ -385,15 +405,16 @@ std::optional<float> raycast_yz_squared(const std::array<float, 3> &ray_start,
           ray_direction[2] * ray_direction[2]);
 }
 
-std::optional<size_t> raycast(const std::vector<float> &sphere_centers, const std::vector<float> &sphere_radii,
-                              const std::array<float, 3> &ray_start, const std::array<float, 3> &ray_direction,
-                              const float wall_size, const float wall_thickness, const float wall_height) {
+std::optional<std::pair<size_t, float>> raycast(const std::vector<float> &sphere_centers,
+                                                const std::vector<float> &sphere_radii,
+                                                const std::array<float, 3> &ray_start,
+                                                const std::array<float, 3> &ray_direction, const float wall_size,
+                                                const float wall_thickness, const float wall_height) {
   assert(sphere_centers.size() == sphere_radii.size() * 3);
   auto closest_sphere_result = raycast(sphere_centers, sphere_radii, ray_start, ray_direction);
   if (!closest_sphere_result.has_value()) {
     return {};
   }
-  const size_t sphere = closest_sphere_result.value().first;
   const float sphere_distance_squared = closest_sphere_result.value().second;
 
   const auto floor_distance_squared = raycast(ray_start, ray_direction);
@@ -483,7 +504,7 @@ std::optional<size_t> raycast(const std::vector<float> &sphere_centers, const st
   if (distance_squared.has_value() && distance_squared.value() < sphere_distance_squared)
     return {};
 
-  return sphere;
+  return closest_sphere_result;
 }
 
 } // namespace water_simulator::engine

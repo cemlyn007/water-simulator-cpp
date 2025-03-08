@@ -25,7 +25,7 @@ private:
   double _mouse_position_in_pixels[2];
   double _last_mouse_position_in_pixels[2];
   double _mouse_position_change_in_pixels[2];
-  bool _mouse_click;
+
   bool _escape_pressed;
 
   float _camera_radians[2];
@@ -46,14 +46,14 @@ public:
   ~Renderer();
 
   std::array<float, 3> _camera_position;
-
-  void render(const engine::State &state);
+  bool _mouse_click;
+  void render(const engine::State &state, bool rotate_camera);
   bool should_close();
   std::array<float, 3> get_cursor_direction();
 
 private:
   void on_framebuffer_shape_change();
-  void update_camera();
+  void update_camera(bool rotate_camera);
 
   GLFWwindow *create_window(int width, int height);
   static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);

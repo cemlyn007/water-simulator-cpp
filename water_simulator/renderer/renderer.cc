@@ -30,9 +30,9 @@ void terminate() {
 
 Renderer::Renderer(int window_width, int window_height, size_t resolution, float spacing, float wall_thickness,
                    const std::vector<BallConfig> &ball_configs)
-    : _window(create_window(window_width, window_height)), _mouse_click(false), _escape_pressed(false),
-      _camera(window_width, window_height), _light(), _container((resolution - 1) * spacing, wall_thickness),
-      _water(resolution, resolution * spacing, 0.0), _balls(ball_configs.size()) {
+    : _window(create_window(window_width, window_height)), _escape_pressed(false), _camera(window_width, window_height),
+      _light(), _container((resolution - 1) * spacing, wall_thickness), _water(resolution, resolution * spacing, 0.0),
+      _balls(ball_configs.size()), _mouse_click(false) {
 
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -80,7 +80,7 @@ Renderer::Renderer(int window_width, int window_height, size_t resolution, float
   _camera_radians[0] = 0.7853982;
   _camera_radians[1] = 0.7853982;
 
-  update_camera();
+  update_camera(false);
 
   std::vector<float> heights(resolution * resolution, 1.0);
   _water.set_heights(heights);
@@ -94,7 +94,7 @@ Renderer::Renderer(int window_width, int window_height, size_t resolution, float
 
 Renderer::~Renderer() { glfwDestroyWindow(_window); }
 
-void Renderer::render(const engine::State &state) {
+void Renderer::render(const engine::State &state, bool rotate_camera) {
   _water.set_heights(state._water_heights);
   for (size_t ball = 0; ball < _balls.size(); ++ball)
     // The multiply by 2 for the radii is because the balls are drawn with a radius of 0.5
@@ -104,7 +104,7 @@ void Renderer::render(const engine::State &state) {
 
   glfwMakeContextCurrent(_window);
 
-  update_camera();
+  update_camera(rotate_camera);
 
   _camera.bind();
   GL_CALL(glClearColor(0.1, 0.1, 0.1, 1.0));
@@ -144,9 +144,9 @@ void Renderer::on_framebuffer_shape_change() {
   _water.set_projection(_projection);
 }
 
-void Renderer::update_camera() {
+void Renderer::update_camera(bool rotate_camera) {
   float camera_radius = std::min(std::max(0.0, norm(_camera_position) + _scroll_offset), 25.0);
-  if (_mouse_click) {
+  if (rotate_camera) {
     _camera_radians[0] = std::fmod(_camera_radians[0] + radians(_mouse_position_change_in_pixels[0]), (2 * M_PI));
     _camera_radians[1] = std::fmod(_camera_radians[1] + radians(_mouse_position_change_in_pixels[1]), (2 * M_PI));
   }
