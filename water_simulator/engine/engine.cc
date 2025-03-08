@@ -147,6 +147,7 @@ void apply_container_collisions(State &state, float restitution) {
 };
 
 static constexpr float GRAVITY = -9.81;
+static constexpr float ALPHA = 0.5;
 static constexpr std::array<float, 9> NEIGHBOUR_KERNEL{
     0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
 };
@@ -164,7 +165,7 @@ void apply_sphere_water_interaction(State &state) {
     for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
       body_height += state._sphere_body_heights[sphere * state._n * state._m + index];
     }
-    state._water_heights[index] += 0.05 * (body_height - state._body_heights[index]);
+    state._water_heights[index] += ALPHA * (body_height - state._body_heights[index]);
     state._body_heights[index] = body_height;
   }
 

@@ -11,27 +11,27 @@ using namespace water_simulator;
 
 constexpr size_t RESOLUTION = 101;
 constexpr float SPACING = 0.02;
-constexpr float WALL_THICKNESS = 0.01;
+constexpr float WALL_THICKNESS = 0.1;
 constexpr float WALL_HEIGHT = 1.25;
 
 int main(int argc, char *argv[]) {
   renderer::init();
 
-  engine::State state(3, RESOLUTION, RESOLUTION, SPACING, 0.8, {0.25, 0.25, 0.25}, {0.265, 0.265, 0.265});
+  engine::State state(3, RESOLUTION, RESOLUTION, SPACING, 0.8, {0.2, 0.3, 0.25}, {2.0, 0.7, 0.2});
 
   renderer::Renderer renderer(1080, 1080, RESOLUTION, SPACING, WALL_THICKNESS,
-                              {{{1.0, 0.0, 0.0}, 0.25}, {{0.0, 1.0, 0.0}, 0.25}, {{0.0, 0.0, 1.0}, 0.25}});
+                              {{{1.0, 0.0, 0.0}, 0.2}, {{0.0, 1.0, 0.0}, 0.3}, {{0.0, 0.0, 1.0}, 0.25}});
 
   state._sphere_centers[0] = -0.5;
-  state._sphere_centers[1] = 3.0;
+  state._sphere_centers[1] = 1.0;
   state._sphere_centers[2] = -0.5;
 
-  state._sphere_centers[3] = 0.00;
-  state._sphere_centers[4] = 3.0;
-  state._sphere_centers[5] = 0.00;
+  state._sphere_centers[3] = 0.5;
+  state._sphere_centers[4] = 1.0;
+  state._sphere_centers[5] = -0.5;
 
   state._sphere_centers[6] = 0.5;
-  state._sphere_centers[7] = 3.0;
+  state._sphere_centers[7] = 1.0;
   state._sphere_centers[8] = 0.5;
 
   auto us = 1us;
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
         if (selected_sphere.has_value()) {
           std::cout << "Selected Sphere Index: " << selected_sphere.value().first << std::endl;
           const size_t sphere_index = selected_sphere.value().first;
-          const float distance = std::sqrt(selected_sphere.value().second); // perf
+          const float distance = std::sqrt(selected_sphere.value().second);
           cursor_direction = renderer::normalize(cursor_direction);
 
           if (just_selected) {

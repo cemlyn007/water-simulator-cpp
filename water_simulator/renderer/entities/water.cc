@@ -221,10 +221,9 @@ void Water::update_normals(const std::vector<float> &heights) {
     std::array<float, 3> cross = {a[1] * b[2] - a[2] * b[1] + a[1] * b[2] - a[2] * b[1],
                                   a[2] * b[0] - a[0] * b[2] + a[2] * b[0] - a[0] * b[2],
                                   a[0] * b[1] - a[1] * b[0] + a[0] * b[1] - a[1] * b[0]};
-    auto normal = normalize(cross);
-    _face_normals[face_index * 3] = normal[0];
-    _face_normals[face_index * 3 + 1] = normal[1];
-    _face_normals[face_index * 3 + 2] = normal[2];
+    _face_normals[face_index * 3] = cross[0];
+    _face_normals[face_index * 3 + 1] = cross[1];
+    _face_normals[face_index * 3 + 2] = cross[2];
   }
   std::fill(_vertex_normals.begin(), _vertex_normals.end(), 0.0);
   for (size_t face_index = 0; face_index < max_face_index; ++face_index) {
@@ -235,9 +234,17 @@ void Water::update_normals(const std::vector<float> &heights) {
       _vertex_normals[vertex_index * 3 + 2] += _face_normals[face_index * 3 + 2];
     }
   }
-  for (size_t index = 0; index < _count.size(); ++index)
+  for (size_t index = 0; index < _count.size(); ++index) {
     for (size_t j = 0; j < 3; ++j)
       _vertex_normals[index * 3 + j] /= _count[index];
+
+    const auto normal =
+        normalize({_vertex_normals[index * 3], _vertex_normals[index * 3 + 1], _vertex_normals[index * 3 + 2]});
+
+    _vertex_normals[index * 3] = normal[0];
+    _vertex_normals[index * 3 + 1] = normal[1];
+    _vertex_normals[index * 3 + 2] = normal[2];
+  }
 }
 
 } // namespace water_simulator::renderer::entities
