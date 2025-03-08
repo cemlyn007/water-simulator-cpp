@@ -8,7 +8,7 @@ namespace water_simulator::renderer {
 float radians(float degrees) { return (degrees * M_PI) / 180.0; };
 
 float norm(std::array<float, 3> vector) {
-  return std::sqrt(std::pow(vector[0], 2) + std::pow(vector[1], 2) + std::pow(vector[2], 2));
+  return std::sqrt(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]);
 }
 
 std::array<float, 3> normalize(const std::array<float, 3> &vector) {
