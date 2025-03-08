@@ -84,12 +84,6 @@ Renderer::Renderer(int window_width, int window_height, size_t resolution, float
 
   std::vector<float> heights(resolution * resolution, 1.0);
   _water.set_heights(heights);
-
-  std::vector<float> normals(3 * resolution * resolution, 0.0);
-  for (size_t i = 0; i < normals.size(); i += 3) {
-    normals[i + 1] = 1.0;
-  }
-  _water.set_normals(normals);
 }
 
 Renderer::~Renderer() { glfwDestroyWindow(_window); }

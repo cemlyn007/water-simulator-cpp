@@ -1,4 +1,5 @@
 #include "water_simulator/renderer/entities/water.h"
+#include "water_simulator/renderer/algebra.h"
 #include "water_simulator/renderer/gl_error_macro.h"
 #include "water_simulator/renderer/shader.h"
 #include "water_simulator/renderer/shader_context_manager.h"
@@ -57,17 +58,27 @@ WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z, double
 Water::Water(size_t resolution, float length, float xz_offset)
     : _resolution(resolution), _shader(read_file("water_simulator/renderer/shaders/basic_lighting.vs"),
                                        read_file("water_simulator/renderer/shaders/basic_lighting.fs")),
-      _xz_vbo(0), _y_vbo(0), _normal_vbo(0), _vao(0), _ebo(0) {
+      _xz_vbo(0), _y_vbo(0), _normal_vbo(0), _vao(0), _ebo(0), _vertex_normals(3 * _resolution * _resolution),
+      _face_normals((_resolution - 1) * (_resolution - 1) * 2 * 3), _count(_resolution * _resolution, 0) {
   WaterData mesh_data = grid_vertices_normals_and_indices(_resolution, _resolution, length / (_resolution));
   std::transform(mesh_data.vertices.begin(), mesh_data.vertices.end(), mesh_data.vertices.begin(),
                  [&](auto &value) { return value + xz_offset; });
+  _xz = mesh_data.vertices;
   _xz_vbo = init_vbo(mesh_data.vertices);
   _y_vbo = init_vbo(_resolution * _resolution * sizeof(float), true);
   _normal_vbo = init_vbo(3 * _resolution * _resolution * sizeof(float), true);
   _ebo = init_ebo(mesh_data.indices);
   _vao = init_vao(_xz_vbo, _y_vbo, _normal_vbo, _ebo, mesh_data.vertices);
-  _indices = mesh_data.indices.size();
+  _indices = mesh_data.indices;
   glBindVertexArray(0);
+
+  size_t max_face_index = (_resolution - 1) * (_resolution - 1) * 2;
+  for (size_t face_index = 0; face_index < max_face_index; ++face_index) {
+    for (size_t index = 0; index < 3; ++index) {
+      const size_t vertex_index = _indices[face_index * 3 + index];
+      ++_count[vertex_index];
+    }
+  }
 }
 
 Water::~Water() {
@@ -173,6 +184,8 @@ void Water::set_heights(const std::vector<float> &heights) {
     throw std::invalid_argument("Invalid heights size");
   glBindBuffer(GL_ARRAY_BUFFER, _y_vbo);
   GL_CALL(glBufferData(GL_ARRAY_BUFFER, heights.size() * sizeof(float), heights.data(), GL_DYNAMIC_DRAW));
+  update_normals(heights);
+  set_normals(_vertex_normals);
 }
 
 void Water::set_normals(const std::vector<float> &normals) {
@@ -185,7 +198,46 @@ void Water::set_normals(const std::vector<float> &normals) {
 void Water::draw() {
   ShaderContextManager context(_shader);
   glBindVertexArray(_vao);
-  glDrawElements(GL_TRIANGLES, _indices, GL_UNSIGNED_INT, nullptr);
+  glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, nullptr);
+}
+
+void Water::update_normals(const std::vector<float> &heights) {
+  if (heights.size() != (_resolution * _resolution))
+    throw std::invalid_argument("Invalid heights size");
+
+  size_t max_face_index = (_resolution - 1) * (_resolution - 1) * 2;
+  std::fill(_face_normals.begin(), _face_normals.end(), 0.0);
+  for (size_t face_index = 0; face_index < max_face_index; ++face_index) {
+    size_t i = _indices[face_index * 3];
+    size_t j = _indices[face_index * 3 + 1];
+    size_t k = _indices[face_index * 3 + 2];
+    std::array<float, 3> vi = {_xz[i * 2], heights[i], _xz[i * 2 + 1]};
+    std::array<float, 3> vj = {_xz[j * 2], heights[j], _xz[j * 2 + 1]};
+    std::array<float, 3> vk = {_xz[k * 2], heights[k], _xz[k * 2 + 1]};
+
+    std::array<float, 3> a = {vj[0] - vi[0], vj[1] - vi[1], vj[2] - vi[2]};
+    std::array<float, 3> b = {vk[0] - vi[0], vk[1] - vi[1], vk[2] - vi[2]};
+
+    std::array<float, 3> cross = {a[1] * b[2] - a[2] * b[1] + a[1] * b[2] - a[2] * b[1],
+                                  a[2] * b[0] - a[0] * b[2] + a[2] * b[0] - a[0] * b[2],
+                                  a[0] * b[1] - a[1] * b[0] + a[0] * b[1] - a[1] * b[0]};
+    auto normal = normalize(cross);
+    _face_normals[face_index * 3] = normal[0];
+    _face_normals[face_index * 3 + 1] = normal[1];
+    _face_normals[face_index * 3 + 2] = normal[2];
+  }
+  std::fill(_vertex_normals.begin(), _vertex_normals.end(), 0.0);
+  for (size_t face_index = 0; face_index < max_face_index; ++face_index) {
+    for (size_t index = 0; index < 3; ++index) {
+      const size_t vertex_index = _indices[face_index * 3 + index];
+      _vertex_normals[vertex_index * 3] += _face_normals[face_index * 3];
+      _vertex_normals[vertex_index * 3 + 1] += _face_normals[face_index * 3 + 1];
+      _vertex_normals[vertex_index * 3 + 2] += _face_normals[face_index * 3 + 2];
+    }
+  }
+  for (size_t index = 0; index < _count.size(); ++index)
+    for (size_t j = 0; j < 3; ++j)
+      _vertex_normals[index * 3 + j] /= _count[index];
 }
 
 } // namespace water_simulator::renderer::entities

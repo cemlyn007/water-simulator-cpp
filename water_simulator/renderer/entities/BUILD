@@ -66,6 +66,7 @@ cc_library(
     data = ["//water_simulator/renderer/shaders:basic_lighting"],
     linkopts = opengl_linkopts,
     deps = [
+        "//water_simulator/renderer:algebra",
         "//water_simulator/renderer:gl_error_macro",
         "//water_simulator/renderer:shader",
         "//water_simulator/renderer:shader_context_manager",
