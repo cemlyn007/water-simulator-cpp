@@ -1,30 +1,9 @@
 #include "water_simulator/renderer/algebra.h"
-#include <iostream>
+#include <array>
 #include <math.h>
 #include <mdspan>
 
 namespace water_simulator::renderer {
-
-void print(const std::array<float, 3> &vector) {
-  std::cout << vector[0] << ", " << vector[1] << ", " << vector[2] << std::endl;
-}
-
-void print(const std::array<float, 16> &matrix) {
-  for (const auto number : matrix) {
-    std::cout << number << ", ";
-  }
-  std::cout << std::endl;
-}
-
-void print(const std::array<std::array<float, 4>, 4> &matrix) {
-  for (const auto &row : matrix) {
-    for (const auto number : row) {
-      std::cout << number << ", ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-}
 
 float radians(float degrees) { return (degrees * M_PI) / 180.0; };
 
@@ -32,13 +11,23 @@ float norm(std::array<float, 3> vector) {
   return std::sqrt(std::pow(vector[0], 2) + std::pow(vector[1], 2) + std::pow(vector[2], 2));
 }
 
+std::array<float, 3> normalize(const std::array<float, 3> &vector) {
+  float denominator = norm(vector);
+  return {
+      vector[0] / denominator,
+      vector[1] / denominator,
+      vector[2] / denominator,
+  };
+};
+
 std::array<float, 3> update_orbit_camera_position(float azimuth_radians, float elevation_radians, float radius) {
   return {radius * std::cos(azimuth_radians) * std::cos(elevation_radians), radius * std::sin(elevation_radians),
           radius * std::sin(azimuth_radians) * std::cos(elevation_radians)};
 };
 
 std::array<float, 16> eye4d() {
-  std::array<float, 16> result{};
+  std::array<float, 16> result;
+  std::fill(result.begin(), result.end(), 0.0);
   auto R_md = std::mdspan(result.data(), 4, 4);
   for (std::size_t i = 0; i < 4; ++i) {
     R_md[i, i] = 1.0;
@@ -65,6 +54,19 @@ std::array<float, 16> multiply_matrices(const std::array<float, 16> &a, const st
 
   return result;
 }
+
+std::array<float, 4> multiply_matrix(const std::array<float, 16> &a, const std::array<float, 4> &b) {
+  std::array<float, 4> result;
+  auto A_md = std::mdspan(a.data(), 4, 4);
+  for (std::size_t i = 0; i < 4; ++i) {
+    float sum = A_md[i, 0] * b[0];
+    for (std::size_t j = 1; j < 4; ++j) {
+      sum += A_md[i, j] * b[j];
+    }
+    result[i] = sum;
+  }
+  return result;
+};
 
 std::array<float, 16> translate(const std::array<float, 16> &matrix, const std::array<float, 3> &vector) {
   // Create a 4x4 identity matrix for scaling.
@@ -96,6 +98,21 @@ std::array<float, 16> scale(const std::array<float, 16> &matrix, const std::arra
   // Multiply the input matrix by the scaling matrix.
   // This is equivalent to: result = matrix dot scaling_matrix.
   return multiply_matrices(matrix, scaling);
+}
+
+std::array<float, 16> transpose(const std::array<float, 16> &matrix) {
+  std::array<float, 16> transposed{};
+
+  // Iterate through all elements
+  for (size_t row = 0; row < 4; ++row) {
+    for (size_t col = 0; col < 4; ++col) {
+      // Original index: row * 4 + col
+      // Transposed index: col * 4 + row
+      transposed[col * 4 + row] = matrix[row * 4 + col];
+    }
+  }
+
+  return transposed;
 }
 
 std::array<float, 16> look_at(const std::array<float, 3> &eye, const std::array<float, 3> &center,
@@ -143,7 +160,7 @@ std::array<float, 16> look_at(const std::array<float, 3> &eye, const std::array<
   result[3, 1] = -(u[0] * eye[0] + u[1] * eye[1] + u[2] * eye[2]);
   result[3, 2] = f[0] * eye[0] + f[1] * eye[1] + f[2] * eye[2];
 
-  return flat_result;
+  return transpose(flat_result);
 }
 
 std::array<float, 16> perspective(float fov, float aspect, float near, float far) {
@@ -159,7 +176,54 @@ std::array<float, 16> perspective(float fov, float aspect, float near, float far
   result[2, 3] = -1.0f;
   result[3, 2] = (2.0f * far * near) * nf;
 
-  return flat_result;
+  return transpose(flat_result);
+}
+
+std::array<float, 16> inverse(std::array<float, 16> matrix) {
+  constexpr int n = 4;
+  std::array<float, 16> inv = eye4d();
+  constexpr float threshold = 1e-8;
+
+  for (int i = 0; i < n; i++) {
+    // Find the pivot row for column i.
+    int pivot = i;
+    float max_val = std::abs(matrix[i * n + i]);
+    for (int j = i + 1; j < n; j++) {
+      float val = std::abs(matrix[j * n + i]);
+      if (val > max_val) {
+        max_val = val;
+        pivot = j;
+      }
+    }
+    if (std::abs(matrix[pivot * n + i]) < threshold) {
+      // Matrix is singular; return identity or handle error.
+      return eye4d();
+    }
+    // Swap the current row with the pivot row if needed.
+    if (pivot != i) {
+      for (int j = 0; j < n; j++) {
+        std::swap(matrix[i * n + j], matrix[pivot * n + j]);
+        std::swap(inv[i * n + j], inv[pivot * n + j]);
+      }
+    }
+    // Divide the pivot row by the pivot value.
+    float diag = matrix[i * n + i];
+    for (int j = 0; j < n; j++) {
+      matrix[i * n + j] /= diag;
+      inv[i * n + j] /= diag;
+    }
+    // Eliminate all other rows.
+    for (int k = 0; k < n; k++) {
+      if (k != i) {
+        float factor = matrix[k * n + i];
+        for (int j = 0; j < n; j++) {
+          matrix[k * n + j] -= factor * matrix[i * n + j];
+          inv[k * n + j] -= factor * inv[i * n + j];
+        }
+      }
+    }
+  }
+  return inv;
 }
 
 } // namespace water_simulator::renderer

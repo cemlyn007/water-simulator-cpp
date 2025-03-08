@@ -56,7 +56,7 @@ void Shader::set_uniform_vector(const std::string &name, const std::array<float,
 
 void Shader::set_uniform_matrix(const std::string &name, const std::array<float, 16> &matrix) {
   GLuint location = glGetUniformLocation(_program, name.c_str());
-  GL_CALL(glUniformMatrix4fv(location, 1, GL_FALSE, matrix.data()););
+  GL_CALL(glUniformMatrix4fv(location, 1, GL_TRUE, matrix.data()););
 }
 
 GLuint Shader::load_vertex_shader(std::string vertex_source_code) {

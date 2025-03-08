@@ -10,13 +10,15 @@ using namespace water_simulator;
 
 constexpr size_t RESOLUTION = 101;
 constexpr float SPACING = 0.02;
+constexpr float WALL_THICKNESS = 0.01;
+constexpr float WALL_HEIGHT = 1.25;
 
 int main(int argc, char *argv[]) {
   renderer::init();
 
   engine::State state(3, RESOLUTION, RESOLUTION, SPACING, 0.8, {0.25, 0.25, 0.25}, {0.265, 0.265, 0.265});
 
-  renderer::Renderer renderer(1080, 1080, RESOLUTION, SPACING,
+  renderer::Renderer renderer(1080, 1080, RESOLUTION, SPACING, WALL_THICKNESS,
                               {{{1.0, 0.0, 0.0}, 0.25}, {{0.0, 1.0, 0.0}, 0.25}, {{0.0, 0.0, 1.0}, 0.25}});
 
   state._sphere_centers[0] = -0.5;
@@ -36,6 +38,12 @@ int main(int argc, char *argv[]) {
   while (!renderer.should_close()) {
     state._time_delta = us.count() / 1000000.0;
     engine::step(state);
+    std::array<float, 3> cursor_direction = renderer.get_cursor_direction();
+    const auto selected_sphere =
+        engine::raycast(state._sphere_centers, state._sphere_radii, renderer._camera_position, cursor_direction,
+                        SPACING * (RESOLUTION - 1), WALL_THICKNESS, WALL_HEIGHT);
+    if (selected_sphere.has_value())
+      std::cout << "Selected Sphere Index: " << selected_sphere.value() << std::endl;
     renderer.render(state);
     auto end = std::chrono::high_resolution_clock::now();
     us = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

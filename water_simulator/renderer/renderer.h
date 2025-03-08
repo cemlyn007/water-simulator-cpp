@@ -29,23 +29,27 @@ private:
   bool _escape_pressed;
 
   float _camera_radians[2];
+  int _window_width, _window_height;
   int _framebuffer_width, _framebuffer_height;
-
-  std::array<float, 3> _camera_position;
 
   Camera _camera;
   entities::Light _light;
   entities::Container _container;
   entities::Water _water;
   std::vector<entities::Ball> _balls;
+  std::array<float, 16> _projection;
+  std::array<float, 16> _view;
 
 public:
-  Renderer(int window_width, int window_height, size_t resolution, float spacing,
+  Renderer(int window_width, int window_height, size_t resolution, float spacing, float wall_thickness,
            const std::vector<BallConfig> &ball_configs);
   ~Renderer();
 
+  std::array<float, 3> _camera_position;
+
   void render(const engine::State &state);
   bool should_close();
+  std::array<float, 3> get_cursor_direction();
 
 private:
   void on_framebuffer_shape_change();

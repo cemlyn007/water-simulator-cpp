@@ -28,12 +28,10 @@ void terminate() {
   glfwTerminate();
 }
 
-constexpr static float WALL_THICKNESS = 0.1;
-
-Renderer::Renderer(int window_width, int window_height, size_t resolution, float spacing,
+Renderer::Renderer(int window_width, int window_height, size_t resolution, float spacing, float wall_thickness,
                    const std::vector<BallConfig> &ball_configs)
     : _window(create_window(window_width, window_height)), _mouse_click(false), _escape_pressed(false),
-      _camera(window_width, window_height), _light(), _container((resolution - 1) * spacing, WALL_THICKNESS),
+      _camera(window_width, window_height), _light(), _container((resolution - 1) * spacing, wall_thickness),
       _water(resolution, resolution * spacing, 0.0), _balls(ball_configs.size()) {
 
   glEnable(GL_BLEND);
@@ -47,7 +45,7 @@ Renderer::Renderer(int window_width, int window_height, size_t resolution, float
   std::array<float, 3> light_position = {1.2, 4.0, 2.0};
 
   _light.set_color({1.0, 1.0, 1.0});
-  _light.set_model(translate(scale(eye4d(), {0.2, 0.2, 0.2}), light_position));
+  _light.set_model(transpose(translate(scale(eye4d(), {0.2, 0.2, 0.2}), light_position)));
 
   for (size_t sphere = 0; sphere < ball_configs.size(); ++sphere) {
     _balls[sphere].set_color(ball_configs[sphere].color);
@@ -60,17 +58,17 @@ Renderer::Renderer(int window_width, int window_height, size_t resolution, float
   }
 
   float wall_size = (resolution - 1) * spacing;
-  auto container_water_model =
-      translate(eye4d(), {-(wall_size + WALL_THICKNESS) / 2.0f, 0.0, -(wall_size + WALL_THICKNESS) / 2.0f});
+
+  auto container_water_model = translate(eye4d(), {-wall_size / 2.0f, 0.0, -wall_size / 2.0f});
 
   _container.set_color({0.7, 0.7, 0.7});
-  _container.set_model(container_water_model);
+  _container.set_model(transpose(container_water_model));
 
   _container.set_light_color({1.0, 1.0, 1.0});
   _container.set_light_position(light_position);
 
   _water.set_color({0.0, 0.0, 1.0});
-  _water.set_model(container_water_model);
+  _water.set_model(transpose(container_water_model));
 
   _water.set_light_color({1.0, 1.0, 1.0});
   _water.set_light_position(light_position);
@@ -100,9 +98,9 @@ void Renderer::render(const engine::State &state) {
   _water.set_heights(state._water_heights);
   for (size_t ball = 0; ball < _balls.size(); ++ball)
     // The multiply by 2 for the radii is because the balls are drawn with a radius of 0.5
-    _balls[ball].set_model(translate(
+    _balls[ball].set_model(transpose(translate(
         scale(eye4d(), {state._sphere_radii[ball] * 2, state._sphere_radii[ball] * 2, state._sphere_radii[ball] * 2}),
-        {state._sphere_centers[3 * ball], state._sphere_centers[3 * ball + 1], state._sphere_centers[3 * ball + 2]}));
+        {state._sphere_centers[3 * ball], state._sphere_centers[3 * ball + 1], state._sphere_centers[3 * ball + 2]})));
 
   glfwMakeContextCurrent(_window);
 
@@ -135,14 +133,15 @@ void Renderer::render(const engine::State &state) {
 }
 
 void Renderer::on_framebuffer_shape_change() {
+  glfwGetWindowSize(_window, &_window_width, &_window_height);
   _camera.resize(_framebuffer_width, _framebuffer_height);
   float aspect = static_cast<float>(_framebuffer_width) / static_cast<float>(_framebuffer_height);
-  auto projection = perspective(radians(60), aspect, 0.01, 100.0);
-  _light.set_projection(projection);
+  _projection = perspective(radians(60), aspect, 0.01, 100.0);
+  _light.set_projection(_projection);
   for (auto &ball : _balls)
-    ball.set_projection(projection);
-  _container.set_projection(projection);
-  _water.set_projection(projection);
+    ball.set_projection(_projection);
+  _container.set_projection(_projection);
+  _water.set_projection(_projection);
 }
 
 void Renderer::update_camera() {
@@ -152,19 +151,34 @@ void Renderer::update_camera() {
     _camera_radians[1] = std::fmod(_camera_radians[1] + radians(_mouse_position_change_in_pixels[1]), (2 * M_PI));
   }
   _camera_position = update_orbit_camera_position(_camera_radians[0], _camera_radians[1], camera_radius);
-  auto view = look_at(_camera_position, {0.0, 0.5, 0.0}, {0.0, 1.0, 0.0});
-  _light.set_view(view);
+  _view = look_at(_camera_position, {0.0, 0.5, 0.0}, {0.0, 1.0, 0.0});
+  _light.set_view(_view);
   for (auto &ball : _balls) {
-    ball.set_view(view);
+    ball.set_view(_view);
     ball.set_view_position(_camera_position);
   }
-  _container.set_view(view);
+  _container.set_view(_view);
   _container.set_view_position(_camera_position);
-  _water.set_view(view);
+  _water.set_view(_view);
   _water.set_view_position(_camera_position);
 }
 
 bool Renderer::should_close() { return glfwWindowShouldClose(_window) || _escape_pressed; }
+
+// Kudos goes to: https://antongerdelan.net/opengl/raycasting.html
+std::array<float, 3> Renderer::get_cursor_direction() {
+  std::array<float, 3> nds = {static_cast<float>((2.0 * _mouse_position_in_pixels[0]) / _window_width - 1.0),
+                              static_cast<float>(1.0 - (2.0 * _mouse_position_in_pixels[1]) / _window_height), 1.0f};
+  std::array<float, 4> clip = {nds[0], nds[1], -1.0, 1.0f};
+  auto inverse_projection = inverse(_projection);
+  auto ray_eye_xyzw = multiply_matrix(inverse_projection, clip);
+  const std::array<float, 4> t_ray_eye_xyzw = {ray_eye_xyzw[0], ray_eye_xyzw[1], -1.0, 0.0};
+  auto inverse_view = inverse(_view);
+  auto ray_wor_xyzw = multiply_matrix(inverse_view, t_ray_eye_xyzw);
+  std::array<float, 3> ray_wor = {ray_wor_xyzw[0], ray_wor_xyzw[1], ray_wor_xyzw[2]};
+  auto arr = normalize(ray_wor);
+  return arr;
+};
 
 GLFWwindow *Renderer::create_window(int width, int height) {
   GLFWwindow *window = glfwCreateWindow(width, height, "Water Simulator", nullptr, nullptr);
