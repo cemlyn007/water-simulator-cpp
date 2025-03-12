@@ -139,6 +139,10 @@ cc_library(
         "@bazel_tools//src/conditions:windows": WIN32_HDRS,
         "@bazel_tools//src/conditions:linux_x86_64": LINUX_HDRS,
     }),
+    conlyopts = [
+        "-Wno-writable-strings",
+        "-Wno-deprecated",
+    ],
     defines = select({
         "@bazel_tools//src/conditions:windows": WIN32_DEFINES,
         "@bazel_tools//src/conditions:linux_x86_64": LINUX_DEFINES,

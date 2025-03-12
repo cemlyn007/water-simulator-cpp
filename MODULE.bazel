@@ -25,40 +25,6 @@ git_override(
 )
 
 #-------------------------------------------------------------
-# LLVM Toolchain
-#-------------------------------------------------------------
-
-# https://github.com/bazel-contrib/toolchains_llvm/blob/master/toolchain/internal/llvm_distributions.bzl
-# https://github.com/bazel-contrib/toolchains_llvm/blob/7e8e16edc0d79351a277f18f2083e8cb31a3e84a/tests/MODULE.bazel#L62
-bazel_dep(name = "toolchains_llvm")
-
-# To directly use a commit from GitHub, replace commit with the commit you want.
-# Otherwise, omit this block.
-git_override(
-    module_name = "toolchains_llvm",
-    commit = "7e8e16edc0d79351a277f18f2083e8cb31a3e84a",
-    remote = "https://github.com/bazel-contrib/toolchains_llvm",
-)
-
-# Configure and register the toolchain.
-llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm")
-llvm.toolchain(
-    llvm_versions = {
-        "": "19.1.3",
-        # Ideally for darwin, 17.0.6 or later would be used, but this has been left blank
-        # to skip the toolchain due to issues compiling GLFW using the cc_rule
-        # objc_library.
-        "darwin-aarch64": "",
-        "darwin-x86_64": "",
-    },
-    cxx_standard = {
-        "": "c++23",
-    },
-)
-use_repo(llvm, "llvm_toolchain")
-register_toolchains("@llvm_toolchain//:all")
-
-#-------------------------------------------------------------
 # GLFW
 #-------------------------------------------------------------
 
@@ -75,3 +41,5 @@ http_archive(
 )
 
 bazel_dep(name = "glew", version = "2.2.0")
+
+register_toolchains("//toolchain:cc_toolchain_for_linux_x86_64")

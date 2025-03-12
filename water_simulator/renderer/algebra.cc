@@ -1,7 +1,7 @@
 #include "water_simulator/renderer/algebra.h"
 #include <array>
 #include <math.h>
-#include <mdspan>
+#include <span>
 
 namespace water_simulator::renderer {
 
@@ -28,9 +28,9 @@ std::array<float, 3> update_orbit_camera_position(float azimuth_radians, float e
 std::array<float, 16> eye4d() {
   std::array<float, 16> result;
   std::fill(result.begin(), result.end(), 0.0);
-  auto R_md = std::mdspan(result.data(), 4, 4);
+  std::span R_md(result.data(), 4 * 4);
   for (std::size_t i = 0; i < 4; ++i) {
-    R_md[i, i] = 1.0;
+    R_md[i * 4 + i] = 1.0;
   }
   return result;
 }
@@ -38,17 +38,17 @@ std::array<float, 16> eye4d() {
 std::array<float, 16> multiply_matrices(const std::array<float, 16> &a, const std::array<float, 16> &b) {
   std::array<float, 16> result;
 
-  auto A_md = std::mdspan(a.data(), 4, 4);
-  auto B_md = std::mdspan(b.data(), 4, 4);
-  auto R_md = std::mdspan(result.data(), 4, 4);
+  std::span A_md(a.data(), 4 * 4);
+  std::span B_md(b.data(), 4 * 4);
+  std::span R_md(result.data(), 4 * 4);
 
   for (std::size_t i = 0; i < 4; ++i) {
     for (std::size_t j = 0; j < 4; ++j) {
       float sum = 0.0f;
       for (std::size_t k = 0; k < 4; ++k) {
-        sum += A_md[i, k] * B_md[k, j];
+        sum += A_md[i * 4 + k] * B_md[k * 4 + j];
       }
-      R_md[i, j] = sum;
+      R_md[i * 4 + j] = sum;
     }
   }
 
@@ -57,11 +57,11 @@ std::array<float, 16> multiply_matrices(const std::array<float, 16> &a, const st
 
 std::array<float, 4> multiply_matrix(const std::array<float, 16> &a, const std::array<float, 4> &b) {
   std::array<float, 4> result;
-  auto A_md = std::mdspan(a.data(), 4, 4);
+  auto A_md = std::span(a.data(), 4 * 4);
   for (std::size_t i = 0; i < 4; ++i) {
-    float sum = A_md[i, 0] * b[0];
+    float sum = A_md[i * 4 + 0] * b[0];
     for (std::size_t j = 1; j < 4; ++j) {
-      sum += A_md[i, j] * b[j];
+      sum += A_md[i * 4 + j] * b[j];
     }
     result[i] = sum;
   }
@@ -72,12 +72,12 @@ std::array<float, 16> translate(const std::array<float, 16> &matrix, const std::
   // Create a 4x4 identity matrix for scaling.
   std::array<float, 16> translation = eye4d();
 
-  auto translation_md = std::mdspan(translation.data(), 4, 4);
+  std::span translation_md(translation.data(), 4 * 4);
 
   // Replace the diagonal components with the scaling factors.
-  translation_md[3, 0] = vector[0];
-  translation_md[3, 1] = vector[1];
-  translation_md[3, 2] = vector[2];
+  translation_md[3 * 4 + 0] = vector[0];
+  translation_md[3 * 4 + 1] = vector[1];
+  translation_md[3 * 4 + 2] = vector[2];
 
   // Multiply the input matrix by the scaling matrix.
   // This is equivalent to: result = matrix dot scaling_matrix.
@@ -88,12 +88,12 @@ std::array<float, 16> scale(const std::array<float, 16> &matrix, const std::arra
   // Create a 4x4 identity matrix for scaling.
   std::array<float, 16> scaling = eye4d();
 
-  auto scaling_md = std::mdspan(scaling.data(), 4, 4);
+  std::span scaling_md(scaling.data(), 4 * 4);
 
   // Replace the diagonal components with the scaling factors.
-  scaling_md[0, 0] = vector[0];
-  scaling_md[1, 1] = vector[1];
-  scaling_md[2, 2] = vector[2];
+  scaling_md[0 * 4 + 0] = vector[0];
+  scaling_md[1 * 4 + 1] = vector[1];
+  scaling_md[2 * 4 + 2] = vector[2];
 
   // Multiply the input matrix by the scaling matrix.
   // This is equivalent to: result = matrix dot scaling_matrix.
@@ -142,23 +142,23 @@ std::array<float, 16> look_at(const std::array<float, 3> &eye, const std::array<
 
   std::array<float, 16> flat_result = eye4d();
 
-  auto result = std::mdspan(flat_result.data(), 4, 4);
+  std::span result(flat_result.data(), 4 * 4);
 
-  result[0, 0] = s[0];
-  result[1, 0] = s[1];
-  result[2, 0] = s[2];
+  result[0 * 4 + 0] = s[0];
+  result[1 * 4 + 0] = s[1];
+  result[2 * 4 + 0] = s[2];
 
-  result[0, 1] = u[0];
-  result[1, 1] = u[1];
-  result[2, 1] = u[2];
+  result[0 * 4 + 1] = u[0];
+  result[1 * 4 + 1] = u[1];
+  result[2 * 4 + 1] = u[2];
 
-  result[0, 2] = -f[0];
-  result[1, 2] = -f[1];
-  result[2, 2] = -f[2];
+  result[0 * 4 + 2] = -f[0];
+  result[1 * 4 + 2] = -f[1];
+  result[2 * 4 + 2] = -f[2];
 
-  result[3, 0] = -(s[0] * eye[0] + s[1] * eye[1] + s[2] * eye[2]);
-  result[3, 1] = -(u[0] * eye[0] + u[1] * eye[1] + u[2] * eye[2]);
-  result[3, 2] = f[0] * eye[0] + f[1] * eye[1] + f[2] * eye[2];
+  result[3 * 4 + 0] = -(s[0] * eye[0] + s[1] * eye[1] + s[2] * eye[2]);
+  result[3 * 4 + 1] = -(u[0] * eye[0] + u[1] * eye[1] + u[2] * eye[2]);
+  result[3 * 4 + 2] = f[0] * eye[0] + f[1] * eye[1] + f[2] * eye[2];
 
   return transpose(flat_result);
 }
@@ -168,13 +168,13 @@ std::array<float, 16> perspective(float fov, float aspect, float near, float far
   float nf = 1.0f / (near - far);
 
   std::array<float, 16> flat_result{};
-  auto result = std::mdspan(flat_result.data(), 4, 4);
+  std::span result(flat_result.data(), 4 * 4);
 
-  result[0, 0] = f / aspect;
-  result[1, 1] = f;
-  result[2, 2] = (far + near) * nf;
-  result[2, 3] = -1.0f;
-  result[3, 2] = (2.0f * far * near) * nf;
+  result[0 * 4 + 0] = f / aspect;
+  result[1 * 4 + 1] = f;
+  result[2 * 4 + 2] = (far + near) * nf;
+  result[2 * 4 + 3] = -1.0f;
+  result[3 * 4 + 2] = (2.0f * far * near) * nf;
 
   return transpose(flat_result);
 }

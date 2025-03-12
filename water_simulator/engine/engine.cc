@@ -3,7 +3,6 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
-#include <mdspan>
 #include <vector>
 
 namespace water_simulator::engine {

@@ -2,6 +2,7 @@
 #include "water_simulator/renderer/algebra.h"
 #include "water_simulator/renderer/gl_error_macro.h"
 #include <GL/glew.h>
+#include <cmath>
 #include <iostream>
 
 static void glfwErrorCallback(int error, const char *description) {
