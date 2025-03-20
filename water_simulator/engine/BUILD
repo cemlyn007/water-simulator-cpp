@@ -4,7 +4,12 @@ package(default_visibility = ["//water_simulator:__subpackages__"])
 
 cc_library(
     name = "engine",
-    srcs = ["engine.cc"],
+    srcs = select({
+        "//conditions:default": [
+            "engine.cc",
+            "raycast.cc",
+        ],
+    }),
     hdrs = ["engine.h"],
     deps = [":state"],
 )

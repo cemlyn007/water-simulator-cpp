@@ -36,6 +36,19 @@
             ],
             "problemMatcher": [],
             "label": "bazel: Build Debug //water_simulator/bin:water_simulator"
+        },
+        {
+            "type": "bazel",
+            "command": "run",
+            "targets": [
+                "//water_simulator/bin:water_simulator"
+            ],
+            "options": [
+                "--compilation_mode",
+                "dbg",
+            ],
+            "problemMatcher": [],
+            "label": "bazel: Run Debug //water_simulator/bin:water_simulator"
         }
     ]
 }
