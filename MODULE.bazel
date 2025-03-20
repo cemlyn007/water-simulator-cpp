@@ -20,8 +20,8 @@ bazel_dep(name = "rules_cc", version = "0.1.1")
 bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
 git_override(
     module_name = "hedron_compile_commands",
-    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
     commit = "4f28899228fb3ad0126897876f147ca15026151e",
+    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
 )
 
 #-------------------------------------------------------------
@@ -42,4 +42,18 @@ http_archive(
 
 bazel_dep(name = "glew", version = "2.2.0")
 
-register_toolchains("//toolchain:cc_toolchain_for_linux_x86_64")
+#-------------------------------------------------------------
+# SYCL
+#-------------------------------------------------------------
+
+bazel_dep(name = "rules_sycl")
+git_override(
+    module_name = "rules_sycl",
+    commit = "07316ee5005209780875428ca5cc40280fb1cc53",
+    remote = "https://github.com/cemlyn007/rules_sycl.git",
+)
+
+sycl_configure = use_extension("@rules_sycl//sycl:extensions.bzl", "sycl_configure_extension")
+use_repo(sycl_configure, "local_config_sycl", "local_config_sycl_toolchains")
+
+register_toolchains("@local_config_sycl_toolchains//:all")

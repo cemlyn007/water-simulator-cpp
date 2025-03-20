@@ -259,6 +259,26 @@
           ]
         ]
       }
+    },
+    "@@rules_sycl+//sycl:extensions.bzl%sycl_configure_extension": {
+      "general": {
+        "bzlTransitiveDigest": "+9TjWl+sZGF3fBUJdqfujty1y25hh+hzIKf4naHn76Y=",
+        "usagesDigest": "ZYko40rRUq37cg8n7XZzM3tIrd8KeHiQwlV5mfl49YM=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "local_config_sycl_toolchains": {
+            "repoRuleId": "@@rules_sycl+//sycl:sycl_configure.bzl%sycl_autoconf_toolchains",
+            "attributes": {}
+          },
+          "local_config_sycl": {
+            "repoRuleId": "@@rules_sycl+//sycl:sycl_configure.bzl%sycl_autoconf",
+            "attributes": {}
+          }
+        },
+        "recordedRepoMappingEntries": []
+      }
     }
   }
 }
