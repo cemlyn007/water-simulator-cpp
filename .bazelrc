@@ -1,6 +1,8 @@
 # Enable platform-specific configurations
 build --enable_platform_specific_config
 
+build --define=sycl_engine=true
+
 build --cxxopt=-std=c++23
 
 build:opt --copt=-O3
