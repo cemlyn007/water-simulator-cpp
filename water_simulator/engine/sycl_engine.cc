@@ -9,14 +9,14 @@
 
 namespace water_simulator::engine {
 
+static sycl::queue queue;
+
 void sphere_body_heights(std::vector<float> &body_heights, const std::vector<float> &sphere_centers,
                          const std::vector<float> &sphere_radii, const std::vector<float> &water_xzs,
                          const std::vector<float> &water_heights) {
   assert(sphere_centers.size() % 3 == 0);
   assert(water_xzs.size() % 2 == 0);
   assert(sphere_radii.size() * 3 == sphere_centers.size());
-
-  sycl::queue queue;
 
   sycl::buffer<float, 1> d_body_heights(body_heights.data(), sycl::range<1>(body_heights.size()));
   sycl::buffer<float, 1> d_sphere_centers(sphere_centers.data(), sycl::range<1>(sphere_centers.size()));
@@ -35,27 +35,30 @@ void sphere_body_heights(std::vector<float> &body_heights, const std::vector<flo
       auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read>(handler);
       auto body_heights_acc = d_body_heights.get_access<sycl::access::mode::discard_write>(handler);
 
-      handler.parallel_for(sycl::range<1>(n_spheres), [=](sycl::id<1> index) {
-        auto sphere = index;
-        const double sphere_y = sphere_centers_acc[3 * sphere + 1];
-        const double sphere_x = sphere_centers_acc[3 * sphere];
-        const double sphere_z = sphere_centers_acc[3 * sphere + 2];
-        const double sphere_radius = sphere_radii_acc[sphere];
-        const double sphere_radius2 = sphere_radius * sphere_radius;
+      handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
+        auto water_index = index;
 
-        for (size_t water_index = 0; water_index < n_water_points; ++water_index) {
-          const double x = water_xzs_acc[2 * water_index];
-          const double z = water_xzs_acc[2 * water_index + 1];
-          const double y = water_heights_acc[water_index];
-          const double dx = x - sphere_x;
-          const double dz = z - sphere_z;
-          const double distance2 = dx * dx + dz * dz;
+        const float x = water_xzs_acc[2 * water_index];
+        const float z = water_xzs_acc[2 * water_index + 1];
+        const float y = water_heights_acc[water_index];
+
+        for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
+          const float sphere_y = sphere_centers_acc[3 * sphere + 1];
+          const float sphere_x = sphere_centers_acc[3 * sphere];
+          const float sphere_z = sphere_centers_acc[3 * sphere + 2];
+          const float sphere_radius = sphere_radii_acc[sphere];
+          const float sphere_radius2 = sphere_radius * sphere_radius;
+          const float dx = x - sphere_x;
+          const float dz = z - sphere_z;
+          const float distance2 = dx * dx + dz * dz;
+
+          body_heights_acc[sphere * n_water_points + water_index] = 0;
           if (distance2 < sphere_radius2) {
-            const double half_body_height = std::sqrt(sphere_radius2 - distance2);
-            const double min_body_height = std::max(sphere_y - half_body_height, 0.0);
-            const double max_body_height = std::min(sphere_y + half_body_height, y);
-            const double body_height = max_body_height - min_body_height;
-            body_heights_acc[sphere * n_water_points + water_index] = std::max(body_height, 0.0);
+            const float half_body_height = std::sqrt(sphere_radius2 - distance2);
+            const float min_body_height = std::max(sphere_y - half_body_height, 0.0f);
+            const float max_body_height = std::min(sphere_y + half_body_height, y);
+            const float body_height = max_body_height - min_body_height;
+            body_heights_acc[sphere * n_water_points + water_index] = std::max(body_height, 0.0f);
           }
         }
       });
