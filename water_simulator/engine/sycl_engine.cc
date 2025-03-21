@@ -225,11 +225,42 @@ void apply_body_height_change(State &state) {
   }
 }
 
-static constexpr float GRAVITY = -9.81;
 static constexpr std::array<float, 9> NEIGHBOUR_KERNEL{
     0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
 };
 static constexpr float NEIGHBOUR_KERNEL_SUM = 4;
+void apply_neighbour_deltas(State &state) {
+  cross_correlation(state._neighbour_sums, state._water_heights, NEIGHBOUR_KERNEL, state._n, state._m);
+  sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
+  sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
+                                            sycl::range<1>(state._water_velocities.size()));
+  sycl::buffer<float, 1> d_neighbour_sums(state._neighbour_sums.data(), sycl::range<1>(state._neighbour_sums.size()));
+  const size_t n_water_points = state._water_xzs.size() / 2;
+  const double wave_speed = std::min(state._wave_speed, 0.5 * state._spacing / state._time_delta);
+  const float c = std::pow(wave_speed / state._spacing, 2);
+  const double time_delta = state._time_delta;
+  constexpr double POSITIONAL_DAMPING = 1.0f;
+  double positional_damping = std::min(POSITIONAL_DAMPING * state._time_delta, 1.0);
+  try {
+    queue.submit([&](sycl::handler &handler) {
+      auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
+      auto water_velocities_acc = d_water_velocities.get_access<sycl::access::mode::read_write>(handler);
+      auto neighbour_sums_acc = d_neighbour_sums.get_access<sycl::access::mode::read>(handler);
+      handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
+        water_velocities_acc[index] +=
+            time_delta * c * (neighbour_sums_acc[index] - NEIGHBOUR_KERNEL_SUM * water_heights_acc[index]);
+        water_heights_acc[index] +=
+            (neighbour_sums_acc[index] / NEIGHBOUR_KERNEL_SUM - water_heights_acc[index]) * positional_damping;
+      });
+    });
+    queue.wait();
+  } catch (std::exception &ex) {
+    std::cerr << "exception caught: " << ex.what() << std::endl;
+    throw ex;
+  }
+}
+
+static constexpr float GRAVITY = -9.81;
 void apply_sphere_water_interaction(State &state) {
   const size_t n_spheres = state._sphere_centers.size() / 3;
 
@@ -240,22 +271,10 @@ void apply_sphere_water_interaction(State &state) {
 
   apply_body_height_change(state);
 
-  cross_correlation(state._neighbour_sums, state._water_heights, NEIGHBOUR_KERNEL, state._n, state._m);
+  apply_neighbour_deltas(state);
 
-  double wave_speed = std::min(state._wave_speed, 0.5 * state._spacing / state._time_delta);
-  const float c = std::pow(wave_speed / state._spacing, 2);
-
-  constexpr double POSITIONAL_DAMPING = 1.0f;
-  double positional_damping = std::min(POSITIONAL_DAMPING * state._time_delta, 1.0);
   constexpr float VELOCITY_DAMPING = 0.3;
   auto velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * state._time_delta);
-  for (size_t index = 0; index < state._water_heights.size(); ++index) {
-    state._water_velocities[index] +=
-        state._time_delta * c * (state._neighbour_sums[index] - NEIGHBOUR_KERNEL_SUM * state._water_heights[index]);
-    state._water_heights[index] +=
-        (state._neighbour_sums[index] / NEIGHBOUR_KERNEL_SUM - state._water_heights[index]) * positional_damping;
-  }
-
   for (size_t index = 0; index < state._water_heights.size(); ++index) {
     state._water_velocities[index] *= velocity_damping;
     state._water_heights[index] += state._time_delta * state._water_velocities[index];
