@@ -80,28 +80,47 @@ void cross_correlation_impl(S &output, const T &input, const std::array<float, 9
     throw std::runtime_error("Invalid input size");
   if (output.size() != input.size())
     throw std::runtime_error("Invalid output size");
-  for (size_t i = 0; i < input_n; ++i) {
-    for (size_t j = 0; j < input_m; ++j) {
-      float output_element = 0.0;
-      for (size_t ki = 0; ki < kernel_n; ++ki) {
-        size_t get_i = i + ki - kernel_n / 2;
-        if (i + ki < kernel_n / 2) {
-          get_i = 0;
-        } else if (get_i >= input_n) {
-          get_i = input_n - 1;
-        }
-        for (size_t kj = 0; kj < kernel_m; ++kj) {
-          size_t get_j = j + kj - kernel_m / 2;
-          if (j + kj < kernel_m / 2) {
-            get_j = 0;
-          } else if (get_j >= input_m) {
-            get_j = input_m - 1;
+
+  sycl::buffer<float, 1> d_input(input.data(), sycl::range<1>(input.size()));
+  sycl::buffer<float, 1> d_kernel(kernel.data(), sycl::range<1>(kernel.size()));
+  sycl::buffer<float, 1> d_output(output.data(), sycl::range<1>(output.size()));
+
+  try {
+    queue.submit([&](sycl::handler &handler) {
+      auto input_acc = d_input.get_access<sycl::access::mode::read>(handler);
+      auto kernel_acc = d_kernel.get_access<sycl::access::mode::read>(handler);
+      auto output_acc = d_output.get_access<sycl::access::mode::discard_write>(handler);
+
+      handler.parallel_for(sycl::range<2>({input_n, input_m}), [=](sycl::id<2> index) {
+        size_t i = index[0];
+        size_t j = index[1];
+
+        float output_element = 0.0;
+        for (size_t ki = 0; ki < kernel_n; ++ki) {
+          size_t get_i = i + ki - kernel_n / 2;
+          if (i + ki < kernel_n / 2) {
+            get_i = 0;
+          } else if (get_i >= input_n) {
+            get_i = input_n - 1;
           }
-          output_element += input[get_i * input_m + get_j] * kernel[ki * kernel_m + kj];
+          for (size_t kj = 0; kj < kernel_m; ++kj) {
+            size_t get_j = j + kj - kernel_m / 2;
+            if (j + kj < kernel_m / 2) {
+              get_j = 0;
+            } else if (get_j >= input_m) {
+              get_j = input_m - 1;
+            }
+            output_element += input_acc[get_i * input_m + get_j] * kernel_acc[ki * kernel_m + kj];
+          }
         }
-      }
-      output[i * input_m + j] = output_element;
-    }
+        output_acc[i * input_m + j] = output_element;
+      });
+    });
+    queue.wait();
+
+  } catch (std::exception &ex) {
+    std::cerr << "exception caught: " << ex.what() << std::endl;
+    throw ex;
   }
 }
 
