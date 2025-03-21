@@ -190,11 +190,15 @@ void apply_container_collisions(State &state, float restitution) {
   }
 };
 
+static constexpr float GRAVITY = -9.81;
 static constexpr float ALPHA = 0.5;
 void apply_body_height_change(State &state) {
   sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
   sycl::buffer<float, 1> d_sphere_body_heights(state._sphere_body_heights.data(),
                                                sycl::range<1>(state._sphere_body_heights.size()));
+  sycl::buffer<float, 1> d_sphere_masses(state._sphere_masses.data(), sycl::range<1>(state._sphere_masses.size()));
+  sycl::buffer<float, 1> d_sphere_velocities(state._sphere_velocities.data(),
+                                             sycl::range<1>(state._sphere_velocities.size()));
   sycl::buffer<float, 1> d_body_heights(state._body_heights.data(), sycl::range<1>(state._body_heights.size()));
 
   const size_t n_spheres = state._sphere_centers.size() / 3;
@@ -202,16 +206,27 @@ void apply_body_height_change(State &state) {
 
   const size_t n = state._n;
   const size_t m = state._m;
+  const float spacing_squared = state._spacing * state._spacing;
+  const double time_delta = state._time_delta;
 
   try {
     queue.submit([&](sycl::handler &handler) {
       auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
       auto sphere_body_heights_acc = d_sphere_body_heights.get_access<sycl::access::mode::read>(handler);
+      auto sphere_masses_acc = d_sphere_masses.get_access<sycl::access::mode::read>(handler);
+      auto sphere_velocities_acc = d_sphere_velocities.get_access<sycl::access::mode::read_write>(handler);
       auto body_heights_acc = d_body_heights.get_access<sycl::access::mode::read_write>(handler);
       handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
         float body_height = 0;
         for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
-          body_height += sphere_body_heights_acc[sphere * n * m + index];
+          const float sphere_body_height = sphere_body_heights_acc[sphere * n * m + index];
+          const float force = -std::max(sphere_body_height, 0.0f) * spacing_squared * GRAVITY;
+          const float acceleration = force / sphere_masses_acc[sphere];
+          if (sphere_body_height > 0) {
+            sphere_velocities_acc[3 * sphere + 1] += time_delta * acceleration;
+            sphere_velocities_acc[3 * sphere + 1] *= 0.999;
+          }
+          body_height += sphere_body_height;
         }
         water_heights_acc[index] += ALPHA * (body_height - body_heights_acc[index]);
         body_heights_acc[index] = body_height;
@@ -260,7 +275,31 @@ void apply_neighbour_deltas(State &state) {
   }
 }
 
-static constexpr float GRAVITY = -9.81;
+void apply_velocity_damping(State &state) {
+  constexpr float VELOCITY_DAMPING = 0.3;
+  const float velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * state._time_delta);
+  sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
+  sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
+                                            sycl::range<1>(state._water_velocities.size()));
+  const size_t n_water_points = state._water_xzs.size() / 2;
+  const double time_delta = state._time_delta;
+  try {
+    queue.submit([&](sycl::handler &handler) {
+      auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
+      auto water_velocities_acc = d_water_velocities.get_access<sycl::access::mode::read_write>(handler);
+      handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
+        water_velocities_acc[index] *= velocity_damping;
+        water_heights_acc[index] += time_delta * water_velocities_acc[index];
+      });
+    });
+    queue.wait();
+
+  } catch (std::exception &ex) {
+    std::cerr << "exception caught: " << ex.what() << std::endl;
+    throw ex;
+  }
+}
+
 void apply_sphere_water_interaction(State &state) {
   const size_t n_spheres = state._sphere_centers.size() / 3;
 
@@ -268,34 +307,9 @@ void apply_sphere_water_interaction(State &state) {
   assert(state._sphere_body_heights.size() == n_spheres * state._n * state._m);
   assert(state._water_velocities.size() == state._water_heights.size());
   assert(state._sphere_velocities.size() == 3 * n_spheres);
-
   apply_body_height_change(state);
-
   apply_neighbour_deltas(state);
-
-  constexpr float VELOCITY_DAMPING = 0.3;
-  auto velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * state._time_delta);
-  for (size_t index = 0; index < state._water_heights.size(); ++index) {
-    state._water_velocities[index] *= velocity_damping;
-    state._water_heights[index] += state._time_delta * state._water_velocities[index];
-  }
-
-  for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
-    float sphere_body_height = 0;
-    for (size_t i = 0; i < state._n; ++i) {
-      for (size_t j = 0; j < state._m; ++j) {
-        sphere_body_height += state._sphere_body_heights[sphere * state._n * state._m + i * state._m + j];
-      }
-    }
-
-    const float force = -std::max(sphere_body_height, 0.0f) * std::pow(state._spacing, 2) * GRAVITY;
-    const float acceleration = force / state._sphere_masses[sphere];
-
-    if (sphere_body_height > 0) {
-      state._sphere_velocities[3 * sphere + 1] += state._time_delta * acceleration;
-      state._sphere_velocities[3 * sphere + 1] *= 0.999;
-    }
-  }
+  apply_velocity_damping(state);
 }
 
 void apply_sphere_sphere_interaction(std::vector<float> &centers, std::vector<float> &velocities,
