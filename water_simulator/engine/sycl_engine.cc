@@ -190,8 +190,42 @@ void apply_container_collisions(State &state, float restitution) {
   }
 };
 
-static constexpr float GRAVITY = -9.81;
 static constexpr float ALPHA = 0.5;
+void apply_body_height_change(State &state) {
+  sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
+  sycl::buffer<float, 1> d_sphere_body_heights(state._sphere_body_heights.data(),
+                                               sycl::range<1>(state._sphere_body_heights.size()));
+  sycl::buffer<float, 1> d_body_heights(state._body_heights.data(), sycl::range<1>(state._body_heights.size()));
+
+  const size_t n_spheres = state._sphere_centers.size() / 3;
+  const size_t n_water_points = state._water_xzs.size() / 2;
+
+  const size_t n = state._n;
+  const size_t m = state._m;
+
+  try {
+    queue.submit([&](sycl::handler &handler) {
+      auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
+      auto sphere_body_heights_acc = d_sphere_body_heights.get_access<sycl::access::mode::read>(handler);
+      auto body_heights_acc = d_body_heights.get_access<sycl::access::mode::read_write>(handler);
+      handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
+        float body_height = 0;
+        for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
+          body_height += sphere_body_heights_acc[sphere * n * m + index];
+        }
+        water_heights_acc[index] += ALPHA * (body_height - body_heights_acc[index]);
+        body_heights_acc[index] = body_height;
+      });
+    });
+    queue.wait();
+
+  } catch (std::exception &ex) {
+    std::cerr << "exception caught: " << ex.what() << std::endl;
+    throw ex;
+  }
+}
+
+static constexpr float GRAVITY = -9.81;
 static constexpr std::array<float, 9> NEIGHBOUR_KERNEL{
     0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
 };
@@ -204,14 +238,7 @@ void apply_sphere_water_interaction(State &state) {
   assert(state._water_velocities.size() == state._water_heights.size());
   assert(state._sphere_velocities.size() == 3 * n_spheres);
 
-  for (size_t index = 0; index < state._water_heights.size(); ++index) {
-    float body_height = 0;
-    for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
-      body_height += state._sphere_body_heights[sphere * state._n * state._m + index];
-    }
-    state._water_heights[index] += ALPHA * (body_height - state._body_heights[index]);
-    state._body_heights[index] = body_height;
-  }
+  apply_body_height_change(state);
 
   cross_correlation(state._neighbour_sums, state._water_heights, NEIGHBOUR_KERNEL, state._n, state._m);
 
