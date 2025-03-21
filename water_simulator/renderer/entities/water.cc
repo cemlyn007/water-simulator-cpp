@@ -1,5 +1,5 @@
 #include "water_simulator/renderer/entities/water.h"
-#include "water_simulator/renderer/algebra.h"
+#include "water_simulator/renderer/entities/water_normals.h"
 #include "water_simulator/renderer/gl_error_macro.h"
 #include "water_simulator/renderer/shader.h"
 #include "water_simulator/renderer/shader_context_manager.h"
@@ -202,49 +202,7 @@ void Water::draw() {
 }
 
 void Water::update_normals(const std::vector<float> &heights) {
-  if (heights.size() != (_resolution * _resolution))
-    throw std::invalid_argument("Invalid heights size");
-
-  size_t max_face_index = (_resolution - 1) * (_resolution - 1) * 2;
-  std::fill(_face_normals.begin(), _face_normals.end(), 0.0);
-  for (size_t face_index = 0; face_index < max_face_index; ++face_index) {
-    size_t i = _indices[face_index * 3];
-    size_t j = _indices[face_index * 3 + 1];
-    size_t k = _indices[face_index * 3 + 2];
-    std::array<float, 3> vi = {_xz[i * 2], heights[i], _xz[i * 2 + 1]};
-    std::array<float, 3> vj = {_xz[j * 2], heights[j], _xz[j * 2 + 1]};
-    std::array<float, 3> vk = {_xz[k * 2], heights[k], _xz[k * 2 + 1]};
-
-    std::array<float, 3> a = {vj[0] - vi[0], vj[1] - vi[1], vj[2] - vi[2]};
-    std::array<float, 3> b = {vk[0] - vi[0], vk[1] - vi[1], vk[2] - vi[2]};
-
-    std::array<float, 3> cross = {a[1] * b[2] - a[2] * b[1] + a[1] * b[2] - a[2] * b[1],
-                                  a[2] * b[0] - a[0] * b[2] + a[2] * b[0] - a[0] * b[2],
-                                  a[0] * b[1] - a[1] * b[0] + a[0] * b[1] - a[1] * b[0]};
-    _face_normals[face_index * 3] = cross[0];
-    _face_normals[face_index * 3 + 1] = cross[1];
-    _face_normals[face_index * 3 + 2] = cross[2];
-  }
-  std::fill(_vertex_normals.begin(), _vertex_normals.end(), 0.0);
-  for (size_t face_index = 0; face_index < max_face_index; ++face_index) {
-    for (size_t index = 0; index < 3; ++index) {
-      const size_t vertex_index = _indices[face_index * 3 + index];
-      _vertex_normals[vertex_index * 3] += _face_normals[face_index * 3];
-      _vertex_normals[vertex_index * 3 + 1] += _face_normals[face_index * 3 + 1];
-      _vertex_normals[vertex_index * 3 + 2] += _face_normals[face_index * 3 + 2];
-    }
-  }
-  for (size_t index = 0; index < _count.size(); ++index) {
-    for (size_t j = 0; j < 3; ++j)
-      _vertex_normals[index * 3 + j] /= _count[index];
-
-    const auto normal =
-        normalize({_vertex_normals[index * 3], _vertex_normals[index * 3 + 1], _vertex_normals[index * 3 + 2]});
-
-    _vertex_normals[index * 3] = normal[0];
-    _vertex_normals[index * 3 + 1] = normal[1];
-    _vertex_normals[index * 3 + 2] = normal[2];
-  }
+  update_water_normals(_vertex_normals, _face_normals, heights, _resolution, _xz, _indices, _count);
 }
 
 } // namespace water_simulator::renderer::entities

@@ -1,3 +1,4 @@
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(default_visibility = ["//water_simulator:__subpackages__"])
@@ -66,6 +67,7 @@ cc_library(
     data = ["//water_simulator/renderer/shaders:basic_lighting"],
     linkopts = opengl_linkopts,
     deps = [
+        ":water_normals",
         "//water_simulator/renderer:algebra",
         "//water_simulator/renderer:gl_error_macro",
         "//water_simulator/renderer:shader",
@@ -73,5 +75,21 @@ cc_library(
         "//water_simulator/renderer:texture",
         "@glew//:glew_static",
         "@glfw",
+    ],
+)
+
+cc_library(
+    name = "water_normals",
+    srcs = selects.with_or({
+        ("//water_simulator:sycl_and_sycl_cpu", "//water_simulator:sycl_and_sycl_nvidia"): [
+            "water_normals.cc",
+        ],
+        "//conditions:default": [
+            "water_normals.cc",
+        ],
+    }),
+    hdrs = ["water_normals.h"],
+    deps = [
+        "//water_simulator/renderer:algebra",
     ],
 )
