@@ -1,5 +1,6 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//water_simulator:variables.bzl", "SYCL_DEPS", "SYCL_LINKOPTS")
 
 package(default_visibility = ["//water_simulator:__subpackages__"])
 
@@ -89,7 +90,8 @@ cc_library(
         ],
     }),
     hdrs = ["water_normals.h"],
+    linkopts = SYCL_LINKOPTS,
     deps = [
         "//water_simulator/renderer:algebra",
-    ],
+    ] + SYCL_DEPS,
 )
