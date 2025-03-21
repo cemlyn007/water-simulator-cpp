@@ -1,34 +1,62 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(default_visibility = ["//water_simulator:__subpackages__"])
 
-config_setting(
+bool_flag(
     name = "sycl",
-    values = {
-        "define": "sycl_engine=true",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "sycl_enabled",
+    flag_values = {
+        ":sycl": "true",
+    },
+)
+
+string_flag(
+    name = "device",
+    build_setting_default = "cpu",
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "cpu",
+    flag_values = {
+        ":device": "cpu",
     },
 )
 
 config_setting(
-    name = "sycl_nvidia",
-    values = {
-        "define": "sycl_nvidia=true",
+    name = "nvidia",
+    flag_values = {
+        ":device": "nvidia",
     },
 )
 
 selects.config_setting_group(
     name = "sycl_and_sycl_nvidia",
     match_all = [
-        ":sycl",
-        ":sycl_nvidia",
+        ":sycl_enabled",
+        ":nvidia",
+    ],
+)
+
+selects.config_setting_group(
+    name = "sycl_and_sycl_cpu",
+    match_all = [
+        ":sycl_enabled",
+        ":cpu",
     ],
 )
 
 cc_library(
     name = "engine",
-    srcs = select({
-        ":sycl": [
+    srcs = selects.with_or({
+        (":sycl_and_sycl_cpu", "sycl_and_sycl_nvidia"): [
             "raycast.cc",
             "sycl_engine.cc",
         ],
@@ -44,7 +72,7 @@ cc_library(
             "-fsycl-unnamed-lambda",
             "-fsycl-targets=spir64,nvptx64-nvidia-cuda",
         ],
-        ":sycl": [
+        ":sycl_and_sycl_cpu": [
             "-fsycl",
             "-fsycl-unnamed-lambda",
             "-fsycl-targets=spir64",
@@ -59,7 +87,7 @@ cc_library(
             "-fsycl-targets=spir64,nvptx64-nvidia-cuda",
             "--offload-arch=sm_80",
         ],
-        ":sycl": [
+        ":sycl_and_sycl_cpu": [
             "-fsycl",
             "-fsycl-unnamed-lambda",
             "-fsycl-targets=spir64",
@@ -67,8 +95,8 @@ cc_library(
         "//conditions:default": [
         ],
     }),
-    deps = [":state"] + select({
-        ":sycl": [
+    deps = [":state"] + selects.with_or({
+        (":sycl_and_sycl_cpu", "sycl_and_sycl_nvidia"): [
             "@local_config_sycl//sycl",
         ],
         "//conditions:default": [
