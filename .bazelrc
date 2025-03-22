@@ -3,6 +3,15 @@ build --enable_platform_specific_config
 
 build --cxxopt=-std=c++23
 
+# Verbose output from icpx.
+build:dbg --cxxopt="-v"
+# Remark about -g turning off compiler optimizations
+# similar to -O0.
+build:dbg --cxxopt="-Rno-debug-disables-optimization"
+# We pass the -g flag to the linker
+build:dbg --linkopt=-g
+build:dbg --linkopt="-Rno-debug-disables-optimization"
+
 build:opt --copt=-O3
 build:opt --copt=-march=native
 build:opt --copt=-ffast-math
