@@ -13,7 +13,7 @@ std::optional<std::pair<size_t, float>> raycast(const std::vector<float> &sphere
   assert(sphere_centers.size() == sphere_radii.size() * 3);
   const size_t n_spheres = sphere_radii.size();
   std::optional<std::pair<size_t, float>> closest_sphere;
-  float closest_distance_squared = std::numeric_limits<float>::infinity();
+  float closest_distance_squared = std::numeric_limits<float>::max();
 
   for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
     auto sphere_position = std::span(sphere_centers).subspan(3 * sphere, 3);
