@@ -1,3 +1,6 @@
+refresh:
+	bazel run -c opt --subcommands --//water_simulator:sycl=true --//water_simulator:device=nvidia //:refresh_compile_commands
+
 cpu:
 	bazel run  //water_simulator/bin:water_simulator \
 	 --subcommands -c opt
@@ -12,4 +15,4 @@ gpu:
 	bazel run  //water_simulator/bin:water_simulator --subcommands -c opt \
 	--//water_simulator:sycl=true --//water_simulator:device=nvidia
 
-.PHONY: cpu sycl_cpu gpu
+.PHONY: refresh cpu sycl_cpu gpu

@@ -2,7 +2,7 @@
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
 
-SYCL_LINKOPTS = select({
+SYCL_CXXOPTS = select({
     "//water_simulator:sycl_and_sycl_nvidia": [
         "-fsycl",
         "-fsycl-unnamed-lambda",
@@ -13,6 +13,14 @@ SYCL_LINKOPTS = select({
         "-fsycl",
         "-fsycl-unnamed-lambda",
         "-fsycl-targets=spir64",
+    ],
+    "//conditions:default": [
+    ],
+})
+
+SYCL_LINKOPTS = SYCL_CXXOPTS + select({
+    "//water_simulator:sycl_and_sycl_nvidia": [
+        "--offload-arch=sm_80",
     ],
     "//conditions:default": [
     ],

@@ -1,6 +1,6 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//water_simulator:variables.bzl", "SYCL_DEPS", "SYCL_LINKOPTS")
+load("//water_simulator:variables.bzl", "SYCL_CXXOPTS", "SYCL_DEPS", "SYCL_LINKOPTS")
 
 package(default_visibility = ["//water_simulator:__subpackages__"])
 
@@ -83,13 +83,14 @@ cc_library(
     name = "water_normals",
     srcs = selects.with_or({
         ("//water_simulator:sycl_and_sycl_cpu", "//water_simulator:sycl_and_sycl_nvidia"): [
-            "water_normals.cc",
+            "sycl_water_normals.cc",
         ],
         "//conditions:default": [
             "water_normals.cc",
         ],
     }),
     hdrs = ["water_normals.h"],
+    cxxopts = SYCL_CXXOPTS,
     linkopts = SYCL_LINKOPTS,
     deps = [
         "//water_simulator/renderer:algebra",

@@ -1,6 +1,6 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("//water_simulator:variables.bzl", "SYCL_DEPS", "SYCL_LINKOPTS")
+load("//water_simulator:variables.bzl", "SYCL_CXXOPTS", "SYCL_DEPS", "SYCL_LINKOPTS")
 
 package(default_visibility = ["//water_simulator:__subpackages__"])
 
@@ -17,20 +17,7 @@ cc_library(
         ],
     }),
     hdrs = ["engine.h"],
-    cxxopts = select({
-        "//water_simulator:sycl_and_sycl_nvidia": [
-            "-fsycl",
-            "-fsycl-unnamed-lambda",
-            "-fsycl-targets=spir64,nvptx64-nvidia-cuda",
-        ],
-        "//water_simulator:sycl_and_sycl_cpu": [
-            "-fsycl",
-            "-fsycl-unnamed-lambda",
-            "-fsycl-targets=spir64",
-        ],
-        "//conditions:default": [
-        ],
-    }),
+    cxxopts = SYCL_CXXOPTS,
     linkopts = SYCL_LINKOPTS,
     deps = [":state"] + SYCL_DEPS,
 )
