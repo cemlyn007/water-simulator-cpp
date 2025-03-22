@@ -6,8 +6,9 @@ SYCL_CXXOPTS = select({
     "//water_simulator:sycl_and_sycl_nvidia": [
         "-fsycl",
         "-fsycl-unnamed-lambda",
-        "-fsycl-targets=spir64,nvptx64-nvidia-cuda",
-        "--offload-arch=sm_80",
+        "-fsycl-targets=nvptx64-nvidia-cuda",
+        "-Xsycl-target-backend",
+        "--cuda-gpu-arch=sm_89",
     ],
     "//water_simulator:sycl_and_sycl_cpu": [
         "-fsycl",
@@ -20,7 +21,6 @@ SYCL_CXXOPTS = select({
 
 SYCL_LINKOPTS = SYCL_CXXOPTS + select({
     "//water_simulator:sycl_and_sycl_nvidia": [
-        "--offload-arch=sm_80",
     ],
     "//conditions:default": [
     ],
