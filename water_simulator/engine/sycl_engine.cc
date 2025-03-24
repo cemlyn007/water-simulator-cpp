@@ -275,14 +275,11 @@ void apply_neighbour_deltas(State &state) {
   }
 }
 
-void apply_velocity_damping(State &state) {
+void apply_velocity_damping(sycl::buffer<float, 1> d_water_heights, sycl::buffer<float, 1> d_water_velocities,
+                            const size_t n, const size_t m, const double time_delta) {
   constexpr float VELOCITY_DAMPING = 0.3;
-  const float velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * state._time_delta);
-  sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
-  sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
-                                            sycl::range<1>(state._water_velocities.size()));
-  const size_t n_water_points = state._water_xzs.size() / 2;
-  const double time_delta = state._time_delta;
+  const float velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * time_delta);
+  const size_t n_water_points = n * m;
   try {
     queue.submit([&](sycl::handler &handler) {
       auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
@@ -309,7 +306,13 @@ void apply_sphere_water_interaction(State &state) {
   assert(state._sphere_velocities.size() == 3 * n_spheres);
   apply_body_height_change(state);
   apply_neighbour_deltas(state);
-  apply_velocity_damping(state);
+  sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
+  sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
+                                            sycl::range<1>(state._water_velocities.size()));
+  const size_t n = state._n;
+  const size_t m = state._m;
+  const double time_delta = state._time_delta;
+  apply_velocity_damping(d_water_heights, d_water_velocities, n, m, time_delta);
 }
 
 void apply_sphere_sphere_interaction(std::vector<float> &centers, std::vector<float> &velocities,
