@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <span>
 #include <stdexcept>
 #include <sycl/sycl.hpp>
 #include <vector>
@@ -11,181 +10,161 @@ namespace water_simulator::engine {
 
 static sycl::queue queue;
 
-void sphere_body_heights(sycl::buffer<float, 1> &d_body_heights, sycl::buffer<float, 1> &d_sphere_centers,
-                         sycl::buffer<float, 1> &d_sphere_radii, sycl::buffer<float, 1> &d_water_xzs,
-                         sycl::buffer<float, 1> &d_water_heights) {
+sycl::event sphere_body_heights(sycl::buffer<float, 1> &d_body_heights, sycl::buffer<float, 1> &d_sphere_centers,
+                                sycl::buffer<float, 1> &d_sphere_radii, sycl::buffer<float, 1> &d_water_xzs,
+                                sycl::buffer<float, 1> &d_water_heights) {
   assert(sphere_centers.size() % 3 == 0);
   assert(water_xzs.size() % 2 == 0);
   assert(sphere_radii.size() * 3 == sphere_centers.size());
 
   const size_t n_spheres = d_sphere_centers.size() / 3;
   const size_t n_water_points = d_water_xzs.size() / 2;
-  try {
-    queue.submit([&](sycl::handler &handler) {
-      auto sphere_centers_acc = d_sphere_centers.get_access<sycl::access::mode::read>(handler);
-      auto sphere_radii_acc = d_sphere_radii.get_access<sycl::access::mode::read>(handler);
-      auto water_xzs_acc = d_water_xzs.get_access<sycl::access::mode::read>(handler);
-      auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read>(handler);
-      auto body_heights_acc = d_body_heights.get_access<sycl::access::mode::discard_write>(handler);
+  return queue.submit([&](sycl::handler &handler) {
+    auto sphere_centers_acc = d_sphere_centers.get_access<sycl::access::mode::read>(handler);
+    auto sphere_radii_acc = d_sphere_radii.get_access<sycl::access::mode::read>(handler);
+    auto water_xzs_acc = d_water_xzs.get_access<sycl::access::mode::read>(handler);
+    auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read>(handler);
+    auto body_heights_acc = d_body_heights.get_access<sycl::access::mode::discard_write>(handler);
 
-      handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
-        auto water_index = index;
+    handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
+      auto water_index = index;
 
-        const float x = water_xzs_acc[2 * water_index];
-        const float z = water_xzs_acc[2 * water_index + 1];
-        const float y = water_heights_acc[water_index];
+      const float x = water_xzs_acc[2 * water_index];
+      const float z = water_xzs_acc[2 * water_index + 1];
+      const float y = water_heights_acc[water_index];
 
-        for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
-          const float sphere_y = sphere_centers_acc[3 * sphere + 1];
-          const float sphere_x = sphere_centers_acc[3 * sphere];
-          const float sphere_z = sphere_centers_acc[3 * sphere + 2];
-          const float sphere_radius = sphere_radii_acc[sphere];
-          const float sphere_radius2 = sphere_radius * sphere_radius;
-          const float dx = x - sphere_x;
-          const float dz = z - sphere_z;
-          const float distance2 = dx * dx + dz * dz;
+      for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
+        const float sphere_y = sphere_centers_acc[3 * sphere + 1];
+        const float sphere_x = sphere_centers_acc[3 * sphere];
+        const float sphere_z = sphere_centers_acc[3 * sphere + 2];
+        const float sphere_radius = sphere_radii_acc[sphere];
+        const float sphere_radius2 = sphere_radius * sphere_radius;
+        const float dx = x - sphere_x;
+        const float dz = z - sphere_z;
+        const float distance2 = dx * dx + dz * dz;
 
-          body_heights_acc[sphere * n_water_points + water_index] = 0;
-          if (distance2 < sphere_radius2) {
-            const float half_body_height = std::sqrt(sphere_radius2 - distance2);
-            const float min_body_height = std::max(sphere_y - half_body_height, 0.0f);
-            const float max_body_height = std::min(sphere_y + half_body_height, y);
-            const float body_height = max_body_height - min_body_height;
-            body_heights_acc[sphere * n_water_points + water_index] = std::max(body_height, 0.0f);
-          }
+        body_heights_acc[sphere * n_water_points + water_index] = 0;
+        if (distance2 < sphere_radius2) {
+          const float half_body_height = std::sqrt(sphere_radius2 - distance2);
+          const float min_body_height = std::max(sphere_y - half_body_height, 0.0f);
+          const float max_body_height = std::min(sphere_y + half_body_height, y);
+          const float body_height = max_body_height - min_body_height;
+          body_heights_acc[sphere * n_water_points + water_index] = std::max(body_height, 0.0f);
         }
-      });
+      }
     });
-    queue.wait();
-
-  } catch (std::exception &ex) {
-    std::cerr << "exception caught: " << ex.what() << std::endl;
-    throw ex;
-  }
+  });
 }
 
 template <typename S, typename T>
-void cross_correlation_impl(S &d_output, T &d_input, sycl::buffer<float, 1> &d_kernel, const size_t input_n,
-                            const size_t input_m) {
+sycl::event cross_correlation_impl(sycl::event dependency, S &d_output, T &d_input, sycl::buffer<float, 1> &d_kernel,
+                                   const size_t input_n, const size_t input_m) {
   constexpr size_t kernel_n = 3;
   constexpr size_t kernel_m = 3;
   if (d_input.size() != input_n * input_m)
     throw std::runtime_error("Invalid input size");
   if (d_output.size() != d_input.size())
     throw std::runtime_error("Invalid output size");
+  return queue.submit([&](sycl::handler &handler) {
+    handler.depends_on(dependency);
+    auto input_acc = d_input.template get_access<sycl::access::mode::read>(handler);
+    auto kernel_acc = d_kernel.template get_access<sycl::access::mode::read>(handler);
+    auto output_acc = d_output.template get_access<sycl::access::mode::discard_write>(handler);
 
-  try {
-    queue.submit([&](sycl::handler &handler) {
-      auto input_acc = d_input.template get_access<sycl::access::mode::read>(handler);
-      auto kernel_acc = d_kernel.template get_access<sycl::access::mode::read>(handler);
-      auto output_acc = d_output.template get_access<sycl::access::mode::discard_write>(handler);
+    handler.parallel_for(sycl::range<2>({input_n, input_m}), [=](sycl::id<2> index) {
+      size_t i = index[0];
+      size_t j = index[1];
 
-      handler.parallel_for(sycl::range<2>({input_n, input_m}), [=](sycl::id<2> index) {
-        size_t i = index[0];
-        size_t j = index[1];
-
-        float output_element = 0.0;
-        for (size_t ki = 0; ki < kernel_n; ++ki) {
-          size_t get_i = i + ki - kernel_n / 2;
-          if (i + ki < kernel_n / 2) {
-            get_i = 0;
-          } else if (get_i >= input_n) {
-            get_i = input_n - 1;
-          }
-          for (size_t kj = 0; kj < kernel_m; ++kj) {
-            size_t get_j = j + kj - kernel_m / 2;
-            if (j + kj < kernel_m / 2) {
-              get_j = 0;
-            } else if (get_j >= input_m) {
-              get_j = input_m - 1;
-            }
-            output_element += input_acc[get_i * input_m + get_j] * kernel_acc[ki * kernel_m + kj];
-          }
+      float output_element = 0.0;
+      for (size_t ki = 0; ki < kernel_n; ++ki) {
+        size_t get_i = i + ki - kernel_n / 2;
+        if (i + ki < kernel_n / 2) {
+          get_i = 0;
+        } else if (get_i >= input_n) {
+          get_i = input_n - 1;
         }
-        output_acc[i * input_m + j] = output_element;
-      });
+        for (size_t kj = 0; kj < kernel_m; ++kj) {
+          size_t get_j = j + kj - kernel_m / 2;
+          if (j + kj < kernel_m / 2) {
+            get_j = 0;
+          } else if (get_j >= input_m) {
+            get_j = input_m - 1;
+          }
+          output_element += input_acc[get_i * input_m + get_j] * kernel_acc[ki * kernel_m + kj];
+        }
+      }
+      output_acc[i * input_m + j] = output_element;
     });
-    queue.wait();
-
-  } catch (std::exception &ex) {
-    std::cerr << "exception caught: " << ex.what() << std::endl;
-    throw ex;
-  }
+  });
+  ;
 }
 
 template <typename S, typename T>
-void cross_correlation_impl(S &d_output, T &d_input, sycl::buffer<float, 1> &d_kernel, const size_t input_n,
-                            const size_t input_m, const size_t input_k) {
+sycl::event cross_correlation_impl(sycl::event dependency, S &d_output, T &d_input, sycl::buffer<float, 1> &d_kernel,
+                                   const size_t input_n, const size_t input_m, const size_t input_k) {
   constexpr size_t kernel_n = 3;
   constexpr size_t kernel_m = 3;
   if (d_input.size() != input_n * input_m * input_k)
     throw std::runtime_error("Invalid input size");
   if (d_output.size() != d_input.size())
     throw std::runtime_error("Invalid output size");
-
-  try {
-    queue.submit([&](sycl::handler &handler) {
-      auto input_acc = d_input.template get_access<sycl::access::mode::read>(handler);
-      auto kernel_acc = d_kernel.template get_access<sycl::access::mode::read>(handler);
-      auto output_acc = d_output.template get_access<sycl::access::mode::discard_write>(handler);
-
-      handler.parallel_for(sycl::range<3>({input_n, input_m, input_k}), [=](sycl::id<3> index) {
-        size_t i = index[0];
-        size_t j = index[1];
-        size_t k = index[2];
-        size_t offset = i * input_m * input_k;
-        float output_element = 0.0;
-        for (size_t kj = 0; kj < kernel_n; ++kj) {
-          size_t get_j = j + kj - kernel_n / 2;
-          if (j + kj < kernel_n / 2) {
-            get_j = 0;
-          } else if (get_j >= input_m) {
-            get_j = input_m - 1;
-          }
-          for (size_t kk = 0; kk < kernel_m; ++kk) {
-            size_t get_k = k + kk - kernel_m / 2;
-            if (k + kk < kernel_m / 2) {
-              get_k = 0;
-            } else if (get_k >= input_k) {
-              get_k = input_k - 1;
-            }
-            output_element += input_acc[offset + get_j * input_k + get_k] * kernel_acc[kj * kernel_m + kk];
-          }
+  return queue.submit([&](sycl::handler &handler) {
+    handler.depends_on(dependency);
+    auto input_acc = d_input.template get_access<sycl::access::mode::read>(handler);
+    auto kernel_acc = d_kernel.template get_access<sycl::access::mode::read>(handler);
+    auto output_acc = d_output.template get_access<sycl::access::mode::discard_write>(handler);
+    handler.parallel_for(sycl::range<3>({input_n, input_m, input_k}), [=](sycl::id<3> index) {
+      size_t i = index[0];
+      size_t j = index[1];
+      size_t k = index[2];
+      size_t offset = i * input_m * input_k;
+      float output_element = 0.0;
+      for (size_t kj = 0; kj < kernel_n; ++kj) {
+        size_t get_j = j + kj - kernel_n / 2;
+        if (j + kj < kernel_n / 2) {
+          get_j = 0;
+        } else if (get_j >= input_m) {
+          get_j = input_m - 1;
         }
-        output_acc[offset + j * input_k + k] = output_element;
-      });
+        for (size_t kk = 0; kk < kernel_m; ++kk) {
+          size_t get_k = k + kk - kernel_m / 2;
+          if (k + kk < kernel_m / 2) {
+            get_k = 0;
+          } else if (get_k >= input_k) {
+            get_k = input_k - 1;
+          }
+          output_element += input_acc[offset + get_j * input_k + get_k] * kernel_acc[kj * kernel_m + kk];
+        }
+      }
+      output_acc[offset + j * input_k + k] = output_element;
     });
-    queue.wait();
-
-  } catch (std::exception &ex) {
-    std::cerr << "exception caught: " << ex.what() << std::endl;
-    throw ex;
-  }
+  });
 }
 
-void cross_correlation(sycl::buffer<float, 1> &d_output, sycl::buffer<float, 1> &d_input,
-                       sycl::buffer<float, 1> &d_kernel, const size_t input_n, const size_t input_m) {
-  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
-                                                                             input_m);
+sycl::event cross_correlation(sycl::event dependency, sycl::buffer<float, 1> &d_output, sycl::buffer<float, 1> &d_input,
+                              sycl::buffer<float, 1> &d_kernel, const size_t input_n, const size_t input_m) {
+  return cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(dependency, d_output, d_input,
+                                                                                    d_kernel, input_n, input_m);
 }
 
-void cross_correlation(sycl::buffer<float, 1> &d_output, sycl::buffer<float, 1> &d_input,
-                       sycl::buffer<float, 1> &d_kernel, const size_t input_n, const size_t input_m,
-                       const size_t input_k) {
-  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
-                                                                             input_m, input_k);
+sycl::event cross_correlation(sycl::event dependency, sycl::buffer<float, 1> &d_output, sycl::buffer<float, 1> &d_input,
+                              sycl::buffer<float, 1> &d_kernel, const size_t input_n, const size_t input_m,
+                              const size_t input_k) {
+  return cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(
+      dependency, d_output, d_input, d_kernel, input_n, input_m, input_k);
 }
 
 static constexpr std::array<float, 9> SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL{1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f,
                                                                         1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f,
                                                                         1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f};
 
-void smooth_body_heights(sycl::buffer<float, 1> &d_body_heights, sycl::buffer<float, 1> &d_smoothed,
-                         const size_t n_spheres, const size_t n, const size_t m) {
+sycl::event smooth_body_heights(sycl::event dependency, sycl::buffer<float, 1> &d_body_heights,
+                                sycl::buffer<float, 1> &d_smoothed, const size_t n_spheres, const size_t n,
+                                const size_t m) {
   auto d_kernel = sycl::buffer<float, 1>(SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL.data(),
                                          sycl::range<1>(SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL.size()));
-  cross_correlation(d_smoothed, d_body_heights, d_kernel, n_spheres, n, m);
-  cross_correlation(d_body_heights, d_smoothed, d_kernel, n_spheres, n, m);
+  auto first_dependency = cross_correlation(dependency, d_smoothed, d_body_heights, d_kernel, n_spheres, n, m);
+  return cross_correlation(first_dependency, d_body_heights, d_smoothed, d_kernel, n_spheres, n, m);
 }
 
 void apply_container_collisions(State &state, float restitution) {
@@ -227,116 +206,104 @@ void apply_container_collisions(State &state, float restitution) {
 
 static constexpr float GRAVITY = -9.81;
 static constexpr float ALPHA = 0.5;
-void apply_body_height_change(sycl::buffer<float, 1> &d_water_heights, sycl::buffer<float, 1> &d_sphere_body_heights,
-                              sycl::buffer<float, 1> &d_sphere_masses, sycl::buffer<float, 1> &d_sphere_velocities,
-                              sycl::buffer<float, 1> &d_body_heights, const size_t n, const size_t m,
-                              const double spacing, const double time_delta) {
+sycl::event apply_body_height_change(sycl::event dependency, sycl::buffer<float, 1> &d_water_heights,
+                                     sycl::buffer<float, 1> &d_sphere_body_heights,
+                                     sycl::buffer<float, 1> &d_sphere_masses,
+                                     sycl::buffer<float, 1> &d_sphere_velocities,
+                                     sycl::buffer<float, 1> &d_body_heights, const size_t n, const size_t m,
+                                     const double spacing, const double time_delta) {
   const size_t n_spheres = d_sphere_masses.size();
   const size_t n_water_points = n * m;
   const float spacing_squared = spacing * spacing;
-  try {
-    queue.submit([&](sycl::handler &handler) {
-      auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
-      auto sphere_body_heights_acc = d_sphere_body_heights.get_access<sycl::access::mode::read>(handler);
-      auto sphere_masses_acc = d_sphere_masses.get_access<sycl::access::mode::read>(handler);
-      auto sphere_velocities_acc = d_sphere_velocities.get_access<sycl::access::mode::read_write>(handler);
-      auto body_heights_acc = d_body_heights.get_access<sycl::access::mode::read_write>(handler);
-      handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
-        float body_height = 0;
-        for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
-          const float sphere_body_height = sphere_body_heights_acc[sphere * n * m + index];
-          const float force = -std::max(sphere_body_height, 0.0f) * spacing_squared * GRAVITY;
-          const float acceleration = force / sphere_masses_acc[sphere];
-          if (sphere_body_height > 0) {
-            sphere_velocities_acc[3 * sphere + 1] += time_delta * acceleration;
-            sphere_velocities_acc[3 * sphere + 1] *= 0.999;
-          }
-          body_height += sphere_body_height;
+  return queue.submit([&](sycl::handler &handler) {
+    handler.depends_on(dependency);
+    auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
+    auto sphere_body_heights_acc = d_sphere_body_heights.get_access<sycl::access::mode::read>(handler);
+    auto sphere_masses_acc = d_sphere_masses.get_access<sycl::access::mode::read>(handler);
+    auto sphere_velocities_acc = d_sphere_velocities.get_access<sycl::access::mode::read_write>(handler);
+    auto body_heights_acc = d_body_heights.get_access<sycl::access::mode::read_write>(handler);
+    handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
+      float body_height = 0;
+      for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
+        const float sphere_body_height = sphere_body_heights_acc[sphere * n * m + index];
+        const float force = -std::max(sphere_body_height, 0.0f) * spacing_squared * GRAVITY;
+        const float acceleration = force / sphere_masses_acc[sphere];
+        if (sphere_body_height > 0) {
+          sphere_velocities_acc[3 * sphere + 1] += time_delta * acceleration;
+          sphere_velocities_acc[3 * sphere + 1] *= 0.999;
         }
-        water_heights_acc[index] += ALPHA * (body_height - body_heights_acc[index]);
-        body_heights_acc[index] = body_height;
-      });
+        body_height += sphere_body_height;
+      }
+      water_heights_acc[index] += ALPHA * (body_height - body_heights_acc[index]);
+      body_heights_acc[index] = body_height;
     });
-    queue.wait();
-
-  } catch (std::exception &ex) {
-    std::cerr << "exception caught: " << ex.what() << std::endl;
-    throw ex;
-  }
+  });
 }
 
 static constexpr std::array<float, 9> NEIGHBOUR_KERNEL{
     0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
 };
 static constexpr float NEIGHBOUR_KERNEL_SUM = 4;
-void apply_neighbour_deltas(sycl::buffer<float, 1> &d_water_heights, sycl::buffer<float, 1> &d_water_velocities,
-                            sycl::buffer<float, 1> &d_neighbour_sums, sycl::buffer<float, 1> &d_neighbour_kernel,
-                            const size_t n, const size_t m, const double time_delta, const double spacing,
-                            const double wave_speed) {
-  cross_correlation(d_neighbour_sums, d_water_heights, d_neighbour_kernel, n, m);
+sycl::event apply_neighbour_deltas(sycl::event dependency, sycl::buffer<float, 1> &d_water_heights,
+                                   sycl::buffer<float, 1> &d_water_velocities, sycl::buffer<float, 1> &d_neighbour_sums,
+                                   sycl::buffer<float, 1> &d_neighbour_kernel, const size_t n, const size_t m,
+                                   const double time_delta, const double spacing, const double wave_speed) {
+  auto cross_correlation_dependency =
+      cross_correlation(dependency, d_neighbour_sums, d_water_heights, d_neighbour_kernel, n, m);
   const size_t n_water_points = n * m;
   const double adjusted_wave_speed = std::min(wave_speed, 0.5 * spacing / time_delta);
   const float c = std::pow(adjusted_wave_speed / spacing, 2);
   constexpr double POSITIONAL_DAMPING = 1.0f;
   double positional_damping = std::min(POSITIONAL_DAMPING * time_delta, 1.0);
-  try {
-    queue.submit([&](sycl::handler &handler) {
-      auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
-      auto water_velocities_acc = d_water_velocities.get_access<sycl::access::mode::read_write>(handler);
-      auto neighbour_sums_acc = d_neighbour_sums.get_access<sycl::access::mode::read>(handler);
-      handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
-        water_velocities_acc[index] +=
-            time_delta * c * (neighbour_sums_acc[index] - NEIGHBOUR_KERNEL_SUM * water_heights_acc[index]);
-        water_heights_acc[index] +=
-            (neighbour_sums_acc[index] / NEIGHBOUR_KERNEL_SUM - water_heights_acc[index]) * positional_damping;
-      });
+  return queue.submit([&](sycl::handler &handler) {
+    handler.depends_on(cross_correlation_dependency);
+    auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
+    auto water_velocities_acc = d_water_velocities.get_access<sycl::access::mode::read_write>(handler);
+    auto neighbour_sums_acc = d_neighbour_sums.get_access<sycl::access::mode::read>(handler);
+    handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
+      water_velocities_acc[index] +=
+          time_delta * c * (neighbour_sums_acc[index] - NEIGHBOUR_KERNEL_SUM * water_heights_acc[index]);
+      water_heights_acc[index] +=
+          (neighbour_sums_acc[index] / NEIGHBOUR_KERNEL_SUM - water_heights_acc[index]) * positional_damping;
     });
-    queue.wait();
-  } catch (std::exception &ex) {
-    std::cerr << "exception caught: " << ex.what() << std::endl;
-    throw ex;
-  }
+  });
 }
 
-void apply_velocity_damping(sycl::buffer<float, 1> d_water_heights, sycl::buffer<float, 1> d_water_velocities,
-                            const size_t n, const size_t m, const double time_delta) {
+sycl::event apply_velocity_damping(sycl::event dependency, sycl::buffer<float, 1> d_water_heights,
+                                   sycl::buffer<float, 1> d_water_velocities, const size_t n, const size_t m,
+                                   const double time_delta) {
   constexpr float VELOCITY_DAMPING = 0.3;
   const float velocity_damping = std::max(0.0, 1.0 - VELOCITY_DAMPING * time_delta);
   const size_t n_water_points = n * m;
-  try {
-    queue.submit([&](sycl::handler &handler) {
-      auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
-      auto water_velocities_acc = d_water_velocities.get_access<sycl::access::mode::read_write>(handler);
-      handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
-        water_velocities_acc[index] *= velocity_damping;
-        water_heights_acc[index] += time_delta * water_velocities_acc[index];
-      });
+  return queue.submit([&](sycl::handler &handler) {
+    handler.depends_on(dependency);
+    auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
+    auto water_velocities_acc = d_water_velocities.get_access<sycl::access::mode::read_write>(handler);
+    handler.parallel_for(sycl::range<1>(n_water_points), [=](sycl::id<1> index) {
+      water_velocities_acc[index] *= velocity_damping;
+      water_heights_acc[index] += time_delta * water_velocities_acc[index];
     });
-    queue.wait();
-
-  } catch (std::exception &ex) {
-    std::cerr << "exception caught: " << ex.what() << std::endl;
-    throw ex;
-  }
+  });
 }
 
-void apply_sphere_water_interaction(State &state, sycl::buffer<float, 1> &d_water_heights,
-                                    sycl::buffer<float, 1> &d_sphere_body_heights,
-                                    sycl::buffer<float, 1> &d_sphere_masses,
-                                    sycl::buffer<float, 1> &d_sphere_velocities, sycl::buffer<float, 1> &d_body_heights,
-                                    sycl::buffer<float, 1> &d_water_velocities,
-                                    sycl::buffer<float, 1> &d_neighbour_sums,
-                                    sycl::buffer<float, 1> &d_neighbour_kernel, const size_t n, const size_t m,
-                                    const double spacing, const double time_delta) {
+sycl::event
+apply_sphere_water_interaction(sycl::event dependency, sycl::buffer<float, 1> &d_water_heights,
+                               sycl::buffer<float, 1> &d_sphere_body_heights, sycl::buffer<float, 1> &d_sphere_masses,
+                               sycl::buffer<float, 1> &d_sphere_velocities, sycl::buffer<float, 1> &d_body_heights,
+                               sycl::buffer<float, 1> &d_water_velocities, sycl::buffer<float, 1> &d_neighbour_sums,
+                               sycl::buffer<float, 1> &d_neighbour_kernel, const size_t n, const size_t m,
+                               const double spacing, const double time_delta, const double wave_speed) {
   assert(state._water_heights.size() == state._n * state._m);
   assert(state._sphere_body_heights.size() == d_sphere_masses.size() * state._n * state._m);
   assert(state._water_velocities.size() == state._water_heights.size());
   assert(state._sphere_velocities.size() == 3 * d_sphere_masses.size());
-  apply_body_height_change(d_water_heights, d_sphere_body_heights, d_sphere_masses, d_sphere_velocities, d_body_heights,
-                           n, m, state._spacing, time_delta);
-  apply_neighbour_deltas(d_water_heights, d_water_velocities, d_neighbour_sums, d_neighbour_kernel, n, m, time_delta,
-                         state._spacing, state._wave_speed);
-  apply_velocity_damping(d_water_heights, d_water_velocities, n, m, time_delta);
+  auto apply_body_height_change_event =
+      apply_body_height_change(dependency, d_water_heights, d_sphere_body_heights, d_sphere_masses, d_sphere_velocities,
+                               d_body_heights, n, m, spacing, time_delta);
+  auto apply_neighbour_deltas_event =
+      apply_neighbour_deltas(apply_body_height_change_event, d_water_heights, d_water_velocities, d_neighbour_sums,
+                             d_neighbour_kernel, n, m, time_delta, spacing, wave_speed);
+  return apply_velocity_damping(apply_neighbour_deltas_event, d_water_heights, d_water_velocities, n, m, time_delta);
 }
 
 void apply_sphere_sphere_interaction(std::vector<float> &centers, std::vector<float> &velocities,
@@ -415,11 +382,15 @@ void step(State &state) {
                                             sycl::range<1>(state._water_velocities.size()));
   sycl::buffer<float, 1> d_neighbour_sums(state._neighbour_sums.data(), sycl::range<1>(state._neighbour_sums.size()));
   sycl::buffer<float, 1> d_neighbour_kernel(NEIGHBOUR_KERNEL.data(), sycl::range<1>(NEIGHBOUR_KERNEL.size()));
-  sphere_body_heights(d_sphere_body_heights, d_sphere_centers, d_sphere_radii, d_water_xzs, d_water_heights);
-  smooth_body_heights(d_sphere_body_heights, d_smooth, n_spheres, state._n, state._m);
-  apply_sphere_water_interaction(state, d_water_heights, d_sphere_body_heights, d_sphere_masses, d_sphere_velocities,
-                                 d_body_heights, d_water_velocities, d_neighbour_sums, d_neighbour_kernel, state._n,
-                                 state._m, state._spacing, state._time_delta);
+  auto sphere_body_heights_event =
+      sphere_body_heights(d_sphere_body_heights, d_sphere_centers, d_sphere_radii, d_water_xzs, d_water_heights);
+  auto smooth_body_heights_event =
+      smooth_body_heights(sphere_body_heights_event, d_sphere_body_heights, d_smooth, n_spheres, state._n, state._m);
+  apply_sphere_water_interaction(smooth_body_heights_event, d_water_heights, d_sphere_body_heights, d_sphere_masses,
+                                 d_sphere_velocities, d_body_heights, d_water_velocities, d_neighbour_sums,
+                                 d_neighbour_kernel, state._n, state._m, state._spacing, state._time_delta,
+                                 state._wave_speed)
+      .wait();
   constexpr float RESTITUTION = 0.1;
   apply_sphere_sphere_interaction(state._sphere_centers, state._sphere_velocities, state._sphere_radii,
                                   state._sphere_masses, RESTITUTION);
