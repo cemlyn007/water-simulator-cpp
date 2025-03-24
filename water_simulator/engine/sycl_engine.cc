@@ -367,22 +367,12 @@ void apply_sphere_water_interaction(State &state) {
     sycl::buffer<float, 1> d_body_heights(state._body_heights.data(), sycl::range<1>(state._body_heights.size()));
     sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
                                               sycl::range<1>(state._water_velocities.size()));
-    apply_body_height_change(d_water_heights, d_sphere_body_heights, d_sphere_masses, d_sphere_velocities,
-                             d_body_heights, n, m, state._spacing, time_delta);
-  }
-  {
-    sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
-    sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
-                                              sycl::range<1>(state._water_velocities.size()));
     sycl::buffer<float, 1> d_neighbour_sums(state._neighbour_sums.data(), sycl::range<1>(state._neighbour_sums.size()));
     sycl::buffer<float, 1> d_neighbour_kernel(NEIGHBOUR_KERNEL.data(), sycl::range<1>(NEIGHBOUR_KERNEL.size()));
+    apply_body_height_change(d_water_heights, d_sphere_body_heights, d_sphere_masses, d_sphere_velocities,
+                             d_body_heights, n, m, state._spacing, time_delta);
     apply_neighbour_deltas(d_water_heights, d_water_velocities, d_neighbour_sums, d_neighbour_kernel, n, m, time_delta,
                            state._spacing, state._wave_speed);
-  }
-  {
-    sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
-    sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
-                                              sycl::range<1>(state._water_velocities.size()));
     apply_velocity_damping(d_water_heights, d_water_velocities, n, m, time_delta);
   }
 }
