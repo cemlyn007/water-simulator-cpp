@@ -296,16 +296,16 @@ static constexpr std::array<float, 9> NEIGHBOUR_KERNEL{
     0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
 };
 static constexpr float NEIGHBOUR_KERNEL_SUM = 4;
-void apply_neighbour_deltas(State &state, sycl::buffer<float, 1> &d_water_heights,
-                            sycl::buffer<float, 1> &d_water_velocities, sycl::buffer<float, 1> &d_neighbour_sums,
-                            sycl::buffer<float, 1> &d_neighbour_kernel) {
-  cross_correlation(d_neighbour_sums, d_water_heights, d_neighbour_kernel, state._n, state._m);
-  const size_t n_water_points = state._water_xzs.size() / 2;
-  const double wave_speed = std::min(state._wave_speed, 0.5 * state._spacing / state._time_delta);
-  const float c = std::pow(wave_speed / state._spacing, 2);
-  const double time_delta = state._time_delta;
+void apply_neighbour_deltas(sycl::buffer<float, 1> &d_water_heights, sycl::buffer<float, 1> &d_water_velocities,
+                            sycl::buffer<float, 1> &d_neighbour_sums, sycl::buffer<float, 1> &d_neighbour_kernel,
+                            const size_t n, const size_t m, const double time_delta, const double spacing,
+                            const double wave_speed) {
+  cross_correlation(d_neighbour_sums, d_water_heights, d_neighbour_kernel, n, m);
+  const size_t n_water_points = n * m;
+  const double adjusted_wave_speed = std::min(wave_speed, 0.5 * spacing / time_delta);
+  const float c = std::pow(adjusted_wave_speed / spacing, 2);
   constexpr double POSITIONAL_DAMPING = 1.0f;
-  double positional_damping = std::min(POSITIONAL_DAMPING * state._time_delta, 1.0);
+  double positional_damping = std::min(POSITIONAL_DAMPING * time_delta, 1.0);
   try {
     queue.submit([&](sycl::handler &handler) {
       auto water_heights_acc = d_water_heights.get_access<sycl::access::mode::read_write>(handler);
@@ -376,7 +376,8 @@ void apply_sphere_water_interaction(State &state) {
                                               sycl::range<1>(state._water_velocities.size()));
     sycl::buffer<float, 1> d_neighbour_sums(state._neighbour_sums.data(), sycl::range<1>(state._neighbour_sums.size()));
     sycl::buffer<float, 1> d_neighbour_kernel(NEIGHBOUR_KERNEL.data(), sycl::range<1>(NEIGHBOUR_KERNEL.size()));
-    apply_neighbour_deltas(state, d_water_heights, d_water_velocities, d_neighbour_sums, d_neighbour_kernel);
+    apply_neighbour_deltas(d_water_heights, d_water_velocities, d_neighbour_sums, d_neighbour_kernel, n, m, time_delta,
+                           state._spacing, state._wave_speed);
   }
   {
     sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
