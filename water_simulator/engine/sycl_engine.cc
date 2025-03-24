@@ -11,22 +11,15 @@ namespace water_simulator::engine {
 
 static sycl::queue queue;
 
-void sphere_body_heights(std::vector<float> &body_heights, const std::vector<float> &sphere_centers,
-                         const std::vector<float> &sphere_radii, const std::vector<float> &water_xzs,
-                         const std::vector<float> &water_heights) {
+void sphere_body_heights(sycl::buffer<float, 1> &d_body_heights, sycl::buffer<float, 1> &d_sphere_centers,
+                         sycl::buffer<float, 1> &d_sphere_radii, sycl::buffer<float, 1> &d_water_xzs,
+                         sycl::buffer<float, 1> &d_water_heights) {
   assert(sphere_centers.size() % 3 == 0);
   assert(water_xzs.size() % 2 == 0);
   assert(sphere_radii.size() * 3 == sphere_centers.size());
 
-  sycl::buffer<float, 1> d_body_heights(body_heights.data(), sycl::range<1>(body_heights.size()));
-  sycl::buffer<float, 1> d_sphere_centers(sphere_centers.data(), sycl::range<1>(sphere_centers.size()));
-  sycl::buffer<float, 1> d_sphere_radii(sphere_radii.data(), sycl::range<1>(sphere_radii.size()));
-  sycl::buffer<float, 1> d_water_xzs(water_xzs.data(), sycl::range<1>(water_xzs.size()));
-  sycl::buffer<float, 1> d_water_heights(water_heights.data(), sycl::range<1>(water_heights.size()));
-
-  const size_t n_spheres = sphere_centers.size() / 3;
-  const size_t n_water_points = water_xzs.size() / 2;
-
+  const size_t n_spheres = d_sphere_centers.size() / 3;
+  const size_t n_water_points = d_water_xzs.size() / 2;
   try {
     queue.submit([&](sycl::handler &handler) {
       auto sphere_centers_acc = d_sphere_centers.get_access<sycl::access::mode::read>(handler);
@@ -389,9 +382,13 @@ void step(State &state) {
     state._sphere_velocities[3 * sphere + 1] += state._time_delta * GRAVITY;
     state._sphere_centers[3 * sphere + 1] += state._time_delta * state._sphere_velocities[3 * sphere + 1];
   }
-
-  sphere_body_heights(state._sphere_body_heights, state._sphere_centers, state._sphere_radii, state._water_xzs,
-                      state._water_heights);
+  sycl::buffer<float, 1> d_sphere_body_heights(state._sphere_body_heights.data(),
+                                               sycl::range<1>(state._sphere_body_heights.size()));
+  sycl::buffer<float, 1> d_sphere_centers(state._sphere_centers.data(), sycl::range<1>(state._sphere_centers.size()));
+  sycl::buffer<float, 1> d_sphere_radii(state._sphere_radii.data(), sycl::range<1>(state._sphere_radii.size()));
+  sycl::buffer<float, 1> d_water_xzs(state._water_xzs.data(), sycl::range<1>(state._water_xzs.size()));
+  sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
+  sphere_body_heights(d_sphere_body_heights, d_sphere_centers, d_sphere_radii, d_water_xzs, d_water_heights);
   smooth_body_heights(state._sphere_body_heights, n_spheres, state._n, state._m);
 
   apply_sphere_water_interaction(state);
