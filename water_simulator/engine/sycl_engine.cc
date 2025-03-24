@@ -399,29 +399,27 @@ void step(State &state) {
     state._sphere_velocities[3 * sphere + 1] += state._time_delta * GRAVITY;
     state._sphere_centers[3 * sphere + 1] += state._time_delta * state._sphere_velocities[3 * sphere + 1];
   }
-  {
-    sycl::buffer<float, 1> d_sphere_body_heights(state._sphere_body_heights.data(),
-                                                 sycl::range<1>(state._sphere_body_heights.size()));
-    sycl::buffer<float, 1> d_sphere_centers(state._sphere_centers.data(), sycl::range<1>(state._sphere_centers.size()));
-    sycl::buffer<float, 1> d_sphere_radii(state._sphere_radii.data(), sycl::range<1>(state._sphere_radii.size()));
-    sycl::buffer<float, 1> d_water_xzs(state._water_xzs.data(), sycl::range<1>(state._water_xzs.size()));
-    sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
-    static std::vector<float> smooth(n_spheres * state._n * state._m, 0);
-    sycl::buffer<float, 1> d_smooth(smooth.data(), sycl::range<1>(smooth.size()));
-    sycl::buffer<float, 1> d_sphere_masses(state._sphere_masses.data(), sycl::range<1>(state._sphere_masses.size()));
-    sycl::buffer<float, 1> d_sphere_velocities(state._sphere_velocities.data(),
-                                               sycl::range<1>(state._sphere_velocities.size()));
-    sycl::buffer<float, 1> d_body_heights(state._body_heights.data(), sycl::range<1>(state._body_heights.size()));
-    sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
-                                              sycl::range<1>(state._water_velocities.size()));
-    sycl::buffer<float, 1> d_neighbour_sums(state._neighbour_sums.data(), sycl::range<1>(state._neighbour_sums.size()));
-    sycl::buffer<float, 1> d_neighbour_kernel(NEIGHBOUR_KERNEL.data(), sycl::range<1>(NEIGHBOUR_KERNEL.size()));
-    sphere_body_heights(d_sphere_body_heights, d_sphere_centers, d_sphere_radii, d_water_xzs, d_water_heights);
-    smooth_body_heights(d_sphere_body_heights, d_smooth, n_spheres, state._n, state._m);
-    apply_sphere_water_interaction(state, d_water_heights, d_sphere_body_heights, d_sphere_masses, d_sphere_velocities,
-                                   d_body_heights, d_water_velocities, d_neighbour_sums, d_neighbour_kernel, state._n,
-                                   state._m, state._spacing, state._time_delta);
-  }
+  sycl::buffer<float, 1> d_sphere_body_heights(state._sphere_body_heights.data(),
+                                               sycl::range<1>(state._sphere_body_heights.size()));
+  sycl::buffer<float, 1> d_sphere_centers(state._sphere_centers.data(), sycl::range<1>(state._sphere_centers.size()));
+  sycl::buffer<float, 1> d_sphere_radii(state._sphere_radii.data(), sycl::range<1>(state._sphere_radii.size()));
+  sycl::buffer<float, 1> d_water_xzs(state._water_xzs.data(), sycl::range<1>(state._water_xzs.size()));
+  sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
+  static std::vector<float> smooth(n_spheres * state._n * state._m, 0);
+  sycl::buffer<float, 1> d_smooth(smooth.data(), sycl::range<1>(smooth.size()));
+  sycl::buffer<float, 1> d_sphere_masses(state._sphere_masses.data(), sycl::range<1>(state._sphere_masses.size()));
+  sycl::buffer<float, 1> d_sphere_velocities(state._sphere_velocities.data(),
+                                             sycl::range<1>(state._sphere_velocities.size()));
+  sycl::buffer<float, 1> d_body_heights(state._body_heights.data(), sycl::range<1>(state._body_heights.size()));
+  sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
+                                            sycl::range<1>(state._water_velocities.size()));
+  sycl::buffer<float, 1> d_neighbour_sums(state._neighbour_sums.data(), sycl::range<1>(state._neighbour_sums.size()));
+  sycl::buffer<float, 1> d_neighbour_kernel(NEIGHBOUR_KERNEL.data(), sycl::range<1>(NEIGHBOUR_KERNEL.size()));
+  sphere_body_heights(d_sphere_body_heights, d_sphere_centers, d_sphere_radii, d_water_xzs, d_water_heights);
+  smooth_body_heights(d_sphere_body_heights, d_smooth, n_spheres, state._n, state._m);
+  apply_sphere_water_interaction(state, d_water_heights, d_sphere_body_heights, d_sphere_masses, d_sphere_velocities,
+                                 d_body_heights, d_water_velocities, d_neighbour_sums, d_neighbour_kernel, state._n,
+                                 state._m, state._spacing, state._time_delta);
   constexpr float RESTITUTION = 0.1;
   apply_sphere_sphere_interaction(state._sphere_centers, state._sphere_velocities, state._sphere_radii,
                                   state._sphere_masses, RESTITUTION);
