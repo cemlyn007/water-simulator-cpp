@@ -72,24 +72,20 @@ void sphere_body_heights(std::vector<float> &body_heights, const std::vector<flo
 }
 
 template <typename S, typename T>
-void cross_correlation_impl(S &output, const T &input, const std::array<float, 9> &kernel, const size_t input_n,
+void cross_correlation_impl(S &d_output, T &d_input, sycl::buffer<float, 1> &d_kernel, const size_t input_n,
                             const size_t input_m) {
   constexpr size_t kernel_n = 3;
   constexpr size_t kernel_m = 3;
-  if (input.size() != input_n * input_m)
+  if (d_input.size() != input_n * input_m)
     throw std::runtime_error("Invalid input size");
-  if (output.size() != input.size())
+  if (d_output.size() != d_input.size())
     throw std::runtime_error("Invalid output size");
-
-  sycl::buffer<float, 1> d_input(input.data(), sycl::range<1>(input.size()));
-  sycl::buffer<float, 1> d_kernel(kernel.data(), sycl::range<1>(kernel.size()));
-  sycl::buffer<float, 1> d_output(output.data(), sycl::range<1>(output.size()));
 
   try {
     queue.submit([&](sycl::handler &handler) {
-      auto input_acc = d_input.get_access<sycl::access::mode::read>(handler);
-      auto kernel_acc = d_kernel.get_access<sycl::access::mode::read>(handler);
-      auto output_acc = d_output.get_access<sycl::access::mode::discard_write>(handler);
+      auto input_acc = d_input.template get_access<sycl::access::mode::read>(handler);
+      auto kernel_acc = d_kernel.template get_access<sycl::access::mode::read>(handler);
+      auto output_acc = d_output.template get_access<sycl::access::mode::discard_write>(handler);
 
       handler.parallel_for(sycl::range<2>({input_n, input_m}), [=](sycl::id<2> index) {
         size_t i = index[0];
@@ -126,17 +122,35 @@ void cross_correlation_impl(S &output, const T &input, const std::array<float, 9
 
 void cross_correlation(std::vector<float> &output, const std::vector<float> &input, const std::array<float, 9> &kernel,
                        const size_t input_n, const size_t input_m) {
-  cross_correlation_impl<std::vector<float> &, const std::vector<float> &>(output, input, kernel, input_n, input_m);
+  sycl::buffer<float, 1> d_input(input.data(), sycl::range<1>(input.size()));
+  sycl::buffer<float, 1> d_kernel(kernel.data(), sycl::range<1>(kernel.size()));
+  sycl::buffer<float, 1> d_output(output.data(), sycl::range<1>(output.size()));
+  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
+                                                                             input_m);
 }
 
 void cross_correlation(std::vector<float> &output, const std::span<float> input, const std::array<float, 9> &kernel,
                        const size_t input_n, const size_t input_m) {
-  cross_correlation_impl<std::vector<float> &, const std::span<float>>(output, input, kernel, input_n, input_m);
+  sycl::buffer<float, 1> d_input(input.data(), sycl::range<1>(input.size()));
+  sycl::buffer<float, 1> d_kernel(kernel.data(), sycl::range<1>(kernel.size()));
+  sycl::buffer<float, 1> d_output(output.data(), sycl::range<1>(output.size()));
+  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
+                                                                             input_m);
 }
 
 void cross_correlation(std::span<float> output, const std::vector<float> &input, const std::array<float, 9> &kernel,
                        const size_t input_n, const size_t input_m) {
-  cross_correlation_impl<std::span<float>, const std::vector<float> &>(output, input, kernel, input_n, input_m);
+  sycl::buffer<float, 1> d_input(input.data(), sycl::range<1>(input.size()));
+  sycl::buffer<float, 1> d_kernel(kernel.data(), sycl::range<1>(kernel.size()));
+  sycl::buffer<float, 1> d_output(output.data(), sycl::range<1>(output.size()));
+  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
+                                                                             input_m);
+}
+
+void cross_correlation(sycl::buffer<float, 1> &d_output, sycl::buffer<float, 1> &d_input,
+                       sycl::buffer<float, 1> &d_kernel, const size_t input_n, const size_t input_m) {
+  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
+                                                                             input_m);
 }
 
 static constexpr std::array<float, 9> SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL{1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f,
