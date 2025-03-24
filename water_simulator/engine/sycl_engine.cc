@@ -113,6 +113,56 @@ void cross_correlation_impl(S &d_output, T &d_input, sycl::buffer<float, 1> &d_k
   }
 }
 
+template <typename S, typename T>
+void cross_correlation_impl(S &d_output, T &d_input, sycl::buffer<float, 1> &d_kernel, const size_t input_n,
+                            const size_t input_m, const size_t input_k) {
+  constexpr size_t kernel_n = 3;
+  constexpr size_t kernel_m = 3;
+  if (d_input.size() != input_n * input_m * input_k)
+    throw std::runtime_error("Invalid input size");
+  if (d_output.size() != d_input.size())
+    throw std::runtime_error("Invalid output size");
+
+  try {
+    queue.submit([&](sycl::handler &handler) {
+      auto input_acc = d_input.template get_access<sycl::access::mode::read>(handler);
+      auto kernel_acc = d_kernel.template get_access<sycl::access::mode::read>(handler);
+      auto output_acc = d_output.template get_access<sycl::access::mode::discard_write>(handler);
+
+      handler.parallel_for(sycl::range<3>({input_n, input_m, input_k}), [=](sycl::id<3> index) {
+        size_t i = index[0];
+        size_t j = index[1];
+        size_t k = index[2];
+        size_t offset = i * input_m * input_k;
+        float output_element = 0.0;
+        for (size_t kj = 0; kj < kernel_n; ++kj) {
+          size_t get_j = j + kj - kernel_n / 2;
+          if (j + kj < kernel_n / 2) {
+            get_j = 0;
+          } else if (get_j >= input_m) {
+            get_j = input_m - 1;
+          }
+          for (size_t kk = 0; kk < kernel_m; ++kk) {
+            size_t get_k = k + kk - kernel_m / 2;
+            if (k + kk < kernel_m / 2) {
+              get_k = 0;
+            } else if (get_k >= input_k) {
+              get_k = input_k - 1;
+            }
+            output_element += input_acc[offset + get_j * input_k + get_k] * kernel_acc[kj * kernel_m + kk];
+          }
+        }
+        output_acc[offset + j * input_k + k] = output_element;
+      });
+    });
+    queue.wait();
+
+  } catch (std::exception &ex) {
+    std::cerr << "exception caught: " << ex.what() << std::endl;
+    throw ex;
+  }
+}
+
 void cross_correlation(std::vector<float> &output, const std::vector<float> &input, const std::array<float, 9> &kernel,
                        const size_t input_n, const size_t input_m) {
   sycl::buffer<float, 1> d_input(input.data(), sycl::range<1>(input.size()));
@@ -146,18 +196,23 @@ void cross_correlation(sycl::buffer<float, 1> &d_output, sycl::buffer<float, 1> 
                                                                              input_m);
 }
 
+void cross_correlation(sycl::buffer<float, 1> &d_output, sycl::buffer<float, 1> &d_input,
+                       sycl::buffer<float, 1> &d_kernel, const size_t input_n, const size_t input_m,
+                       const size_t input_k) {
+  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
+                                                                             input_m, input_k);
+}
+
 static constexpr std::array<float, 9> SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL{1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f,
                                                                         1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f,
                                                                         1.0f / 9.0f, 1.0f / 9.0f, 1.0f / 9.0f};
 
-void smooth_body_heights(std::span<float> body_heights, const size_t n_spheres, const size_t n, const size_t m) {
-  static thread_local std::vector<float> smoothed(n * m);
-  smoothed.resize(n * m);
-  for (size_t sphere_index = 0; sphere_index < n_spheres; ++sphere_index) {
-    auto sphere_span = body_heights.subspan(sphere_index * n * m, n * m);
-    cross_correlation(smoothed, sphere_span, SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL, n, m);
-    cross_correlation(sphere_span, smoothed, SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL, n, m);
-  }
+void smooth_body_heights(sycl::buffer<float, 1> &d_body_heights, sycl::buffer<float, 1> &d_smoothed,
+                         const size_t n_spheres, const size_t n, const size_t m) {
+  auto d_kernel = sycl::buffer<float, 1>(SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL.data(),
+                                         sycl::range<1>(SMOOTH_SPHERE_BODY_HEIGHTS_KERNEL.size()));
+  cross_correlation(d_smoothed, d_body_heights, d_kernel, n_spheres, n, m);
+  cross_correlation(d_body_heights, d_smoothed, d_kernel, n_spheres, n, m);
 }
 
 void apply_container_collisions(State &state, float restitution) {
@@ -389,7 +444,9 @@ void step(State &state) {
   sycl::buffer<float, 1> d_water_xzs(state._water_xzs.data(), sycl::range<1>(state._water_xzs.size()));
   sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
   sphere_body_heights(d_sphere_body_heights, d_sphere_centers, d_sphere_radii, d_water_xzs, d_water_heights);
-  smooth_body_heights(state._sphere_body_heights, n_spheres, state._n, state._m);
+  static std::vector<float> smooth(n_spheres * state._n * state._m, 0);
+  sycl::buffer<float, 1> d_smooth(smooth.data(), sycl::range<1>(smooth.size()));
+  smooth_body_heights(d_sphere_body_heights, d_smooth, n_spheres, state._n, state._m);
 
   apply_sphere_water_interaction(state);
 
