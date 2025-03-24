@@ -297,11 +297,12 @@ static constexpr std::array<float, 9> NEIGHBOUR_KERNEL{
 };
 static constexpr float NEIGHBOUR_KERNEL_SUM = 4;
 void apply_neighbour_deltas(State &state) {
-  cross_correlation(state._neighbour_sums, state._water_heights, NEIGHBOUR_KERNEL, state._n, state._m);
   sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
   sycl::buffer<float, 1> d_water_velocities(state._water_velocities.data(),
                                             sycl::range<1>(state._water_velocities.size()));
   sycl::buffer<float, 1> d_neighbour_sums(state._neighbour_sums.data(), sycl::range<1>(state._neighbour_sums.size()));
+  sycl::buffer<float, 1> d_neighbour_kernel(NEIGHBOUR_KERNEL.data(), sycl::range<1>(NEIGHBOUR_KERNEL.size()));
+  cross_correlation(d_neighbour_sums, d_water_heights, d_neighbour_kernel, state._n, state._m);
   const size_t n_water_points = state._water_xzs.size() / 2;
   const double wave_speed = std::min(state._wave_speed, 0.5 * state._spacing / state._time_delta);
   const float c = std::pow(wave_speed / state._spacing, 2);
