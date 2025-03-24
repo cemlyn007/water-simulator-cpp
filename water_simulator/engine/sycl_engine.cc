@@ -163,33 +163,6 @@ void cross_correlation_impl(S &d_output, T &d_input, sycl::buffer<float, 1> &d_k
   }
 }
 
-void cross_correlation(std::vector<float> &output, const std::vector<float> &input, const std::array<float, 9> &kernel,
-                       const size_t input_n, const size_t input_m) {
-  sycl::buffer<float, 1> d_input(input.data(), sycl::range<1>(input.size()));
-  sycl::buffer<float, 1> d_kernel(kernel.data(), sycl::range<1>(kernel.size()));
-  sycl::buffer<float, 1> d_output(output.data(), sycl::range<1>(output.size()));
-  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
-                                                                             input_m);
-}
-
-void cross_correlation(std::vector<float> &output, const std::span<float> input, const std::array<float, 9> &kernel,
-                       const size_t input_n, const size_t input_m) {
-  sycl::buffer<float, 1> d_input(input.data(), sycl::range<1>(input.size()));
-  sycl::buffer<float, 1> d_kernel(kernel.data(), sycl::range<1>(kernel.size()));
-  sycl::buffer<float, 1> d_output(output.data(), sycl::range<1>(output.size()));
-  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
-                                                                             input_m);
-}
-
-void cross_correlation(std::span<float> output, const std::vector<float> &input, const std::array<float, 9> &kernel,
-                       const size_t input_n, const size_t input_m) {
-  sycl::buffer<float, 1> d_input(input.data(), sycl::range<1>(input.size()));
-  sycl::buffer<float, 1> d_kernel(kernel.data(), sycl::range<1>(kernel.size()));
-  sycl::buffer<float, 1> d_output(output.data(), sycl::range<1>(output.size()));
-  cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
-                                                                             input_m);
-}
-
 void cross_correlation(sycl::buffer<float, 1> &d_output, sycl::buffer<float, 1> &d_input,
                        sycl::buffer<float, 1> &d_kernel, const size_t input_n, const size_t input_m) {
   cross_correlation_impl<sycl::buffer<float, 1> &, sycl::buffer<float, 1> &>(d_output, d_input, d_kernel, input_n,
@@ -433,15 +406,8 @@ void step(State &state) {
     sycl::buffer<float, 1> d_sphere_radii(state._sphere_radii.data(), sycl::range<1>(state._sphere_radii.size()));
     sycl::buffer<float, 1> d_water_xzs(state._water_xzs.data(), sycl::range<1>(state._water_xzs.size()));
     sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
-    sphere_body_heights(d_sphere_body_heights, d_sphere_centers, d_sphere_radii, d_water_xzs, d_water_heights);
     static std::vector<float> smooth(n_spheres * state._n * state._m, 0);
     sycl::buffer<float, 1> d_smooth(smooth.data(), sycl::range<1>(smooth.size()));
-    smooth_body_heights(d_sphere_body_heights, d_smooth, n_spheres, state._n, state._m);
-  }
-  {
-    sycl::buffer<float, 1> d_water_heights(state._water_heights.data(), sycl::range<1>(state._water_heights.size()));
-    sycl::buffer<float, 1> d_sphere_body_heights(state._sphere_body_heights.data(),
-                                                 sycl::range<1>(state._sphere_body_heights.size()));
     sycl::buffer<float, 1> d_sphere_masses(state._sphere_masses.data(), sycl::range<1>(state._sphere_masses.size()));
     sycl::buffer<float, 1> d_sphere_velocities(state._sphere_velocities.data(),
                                                sycl::range<1>(state._sphere_velocities.size()));
@@ -450,6 +416,8 @@ void step(State &state) {
                                               sycl::range<1>(state._water_velocities.size()));
     sycl::buffer<float, 1> d_neighbour_sums(state._neighbour_sums.data(), sycl::range<1>(state._neighbour_sums.size()));
     sycl::buffer<float, 1> d_neighbour_kernel(NEIGHBOUR_KERNEL.data(), sycl::range<1>(NEIGHBOUR_KERNEL.size()));
+    sphere_body_heights(d_sphere_body_heights, d_sphere_centers, d_sphere_radii, d_water_xzs, d_water_heights);
+    smooth_body_heights(d_sphere_body_heights, d_smooth, n_spheres, state._n, state._m);
     apply_sphere_water_interaction(state, d_water_heights, d_sphere_body_heights, d_sphere_masses, d_sphere_velocities,
                                    d_body_heights, d_water_velocities, d_neighbour_sums, d_neighbour_kernel, state._n,
                                    state._m, state._spacing, state._time_delta);
