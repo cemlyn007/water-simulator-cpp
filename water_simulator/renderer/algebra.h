@@ -4,7 +4,7 @@
 #include <iterator>
 namespace water_simulator::renderer {
 
-template <size_t N> void print(const std::array<float, N> &arr) {
+template <std::size_t N> void print(const std::array<float, N> &arr) {
   std::copy(arr.begin(), arr.end(), std::ostream_iterator<float>(std::cout, " "));
   std::cout << "\n";
 }

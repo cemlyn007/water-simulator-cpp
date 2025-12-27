@@ -104,8 +104,8 @@ std::array<float, 16> transpose(const std::array<float, 16> &matrix) {
   std::array<float, 16> transposed{};
 
   // Iterate through all elements
-  for (size_t row = 0; row < 4; ++row) {
-    for (size_t col = 0; col < 4; ++col) {
+  for (std::size_t row = 0; row < 4; ++row) {
+    for (std::size_t col = 0; col < 4; ++col) {
       // Original index: row * 4 + col
       // Transposed index: col * 4 + row
       transposed[col * 4 + row] = matrix[row * 4 + col];

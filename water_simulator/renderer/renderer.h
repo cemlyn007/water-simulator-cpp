@@ -41,7 +41,7 @@ private:
   std::array<float, 16> _view;
 
 public:
-  Renderer(int window_width, int window_height, size_t resolution, float spacing, float wall_thickness,
+  Renderer(int window_width, int window_height, std::size_t resolution, float spacing, float wall_thickness,
            const std::vector<BallConfig> &ball_configs);
   ~Renderer();
 

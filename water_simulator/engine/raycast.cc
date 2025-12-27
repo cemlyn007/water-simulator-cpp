@@ -2,21 +2,22 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <optional>
 #include <span>
 #include <vector>
 
 namespace water_simulator::engine {
 
-std::optional<std::pair<size_t, float>> raycast(const std::vector<float> &sphere_centers,
-                                                const std::vector<float> &sphere_radii,
-                                                const std::array<float, 3> &ray_start,
-                                                const std::array<float, 3> &ray_direction) {
+std::optional<std::pair<std::size_t, float>> raycast(const std::vector<float> &sphere_centers,
+                                                     const std::vector<float> &sphere_radii,
+                                                     const std::array<float, 3> &ray_start,
+                                                     const std::array<float, 3> &ray_direction) {
   assert(sphere_centers.size() == sphere_radii.size() * 3);
-  const size_t n_spheres = sphere_radii.size();
-  std::optional<std::pair<size_t, float>> closest_sphere;
+  const std::size_t n_spheres = sphere_radii.size();
+  std::optional<std::pair<std::size_t, float>> closest_sphere;
   float closest_distance_squared = std::numeric_limits<float>::max();
 
-  for (size_t sphere = 0; sphere < n_spheres; ++sphere) {
+  for (std::size_t sphere = 0; sphere < n_spheres; ++sphere) {
     auto sphere_position = std::span(sphere_centers).subspan(3 * sphere, 3);
     float sphere_radius = sphere_radii[sphere];
     float a = (ray_direction[0] * ray_direction[0] + ray_direction[1] * ray_direction[1] +
@@ -132,11 +133,11 @@ std::optional<float> raycast_yz_squared(const std::array<float, 3> &ray_start,
           ray_direction[2] * ray_direction[2]);
 }
 
-std::optional<std::pair<size_t, float>> raycast(const std::vector<float> &sphere_centers,
-                                                const std::vector<float> &sphere_radii,
-                                                const std::array<float, 3> &ray_start,
-                                                const std::array<float, 3> &ray_direction, const float wall_size,
-                                                const float wall_thickness, const float wall_height) {
+std::optional<std::pair<std::size_t, float>> raycast(const std::vector<float> &sphere_centers,
+                                                     const std::vector<float> &sphere_radii,
+                                                     const std::array<float, 3> &ray_start,
+                                                     const std::array<float, 3> &ray_direction, const float wall_size,
+                                                     const float wall_thickness, const float wall_height) {
   assert(sphere_centers.size() == sphere_radii.size() * 3);
   auto closest_sphere_result = raycast(sphere_centers, sphere_radii, ray_start, ray_direction);
   if (!closest_sphere_result.has_value()) {

@@ -29,7 +29,7 @@ void terminate() {
   glfwTerminate();
 }
 
-Renderer::Renderer(int window_width, int window_height, size_t resolution, float spacing, float wall_thickness,
+Renderer::Renderer(int window_width, int window_height, std::size_t resolution, float spacing, float wall_thickness,
                    const std::vector<BallConfig> &ball_configs)
     : _window(create_window(window_width, window_height)), _escape_pressed(false), _camera(window_width, window_height),
       _light(), _container((resolution - 1) * spacing, wall_thickness), _water(resolution, resolution * spacing, 0.0),
@@ -48,7 +48,7 @@ Renderer::Renderer(int window_width, int window_height, size_t resolution, float
   _light.set_color({1.0, 1.0, 1.0});
   _light.set_model(transpose(translate(scale(eye4d(), {0.2, 0.2, 0.2}), light_position)));
 
-  for (size_t sphere = 0; sphere < ball_configs.size(); ++sphere) {
+  for (std::size_t sphere = 0; sphere < ball_configs.size(); ++sphere) {
     _balls[sphere].set_color(ball_configs[sphere].color);
     _balls[sphere].set_model(eye4d());
   }
@@ -91,7 +91,7 @@ Renderer::~Renderer() { glfwDestroyWindow(_window); }
 
 void Renderer::render(const engine::State &state, bool rotate_camera) {
   _water.set_heights(state._water_heights);
-  for (size_t ball = 0; ball < _balls.size(); ++ball)
+  for (std::size_t ball = 0; ball < _balls.size(); ++ball)
     // The multiply by 2 for the radii is because the balls are drawn with a radius of 0.5
     _balls[ball].set_model(transpose(translate(
         scale(eye4d(), {state._sphere_radii[ball] * 2, state._sphere_radii[ball] * 2, state._sphere_radii[ball] * 2}),

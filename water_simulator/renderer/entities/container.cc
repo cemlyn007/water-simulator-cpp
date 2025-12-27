@@ -81,7 +81,7 @@ MeshData create_mesh(float size, float wall_thickness) {
       std::pair{std::array{wall_thickness, height_scale, size}, std::array{-wall_thickness, 0.0f, 0.0f}},
   };
   for (const auto &[scaling, translation] : walls) {
-    for (size_t i = 0; i < cube.vertices.size(); i += 3) {
+    for (std::size_t i = 0; i < cube.vertices.size(); i += 3) {
       const float x = cube.vertices[i] * scaling[0] + translation[0];
       const float y = cube.vertices[i + 1] * scaling[1] + translation[1];
       const float z = cube.vertices[i + 2] * scaling[2] + translation[2];

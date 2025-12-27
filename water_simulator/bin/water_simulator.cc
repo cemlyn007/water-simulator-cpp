@@ -9,7 +9,7 @@ using namespace std::chrono_literals;
 
 using namespace water_simulator;
 
-constexpr size_t RESOLUTION = 101;
+constexpr std::size_t RESOLUTION = 101;
 constexpr float SPACING = 0.02;
 constexpr float WALL_THICKNESS = 0.1;
 constexpr float WALL_HEIGHT = 1.25;
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
   auto us = 1us;
   auto start = std::chrono::high_resolution_clock::now();
-  std::optional<std::pair<size_t, float>> selected_sphere;
+  std::optional<std::pair<std::size_t, float>> selected_sphere;
   std::array<float, 3> last_position;
   bool rotate_camera = false;
   bool just_selected = false;
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
         }
         if (selected_sphere.has_value()) {
           std::cout << "Selected Sphere Index: " << selected_sphere.value().first << std::endl;
-          const size_t sphere_index = selected_sphere.value().first;
+          const std::size_t sphere_index = selected_sphere.value().first;
           const float distance = std::sqrt(selected_sphere.value().second);
           cursor_direction = renderer::normalize(cursor_direction);
 

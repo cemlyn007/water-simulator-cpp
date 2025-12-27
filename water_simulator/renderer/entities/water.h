@@ -9,7 +9,7 @@ namespace water_simulator::renderer::entities {
 
 class Water {
 public:
-  Water(size_t resolution, float size, float xz_offset);
+  Water(std::size_t resolution, float size, float xz_offset);
   ~Water();
 
   void set_view(const std::array<float, 16> &view);
@@ -27,7 +27,7 @@ public:
   void draw();
 
 private:
-  size_t _resolution;
+  std::size_t _resolution;
 
   Shader _shader;
   GLuint _xz_vbo;
@@ -40,10 +40,10 @@ private:
   std::vector<float> _xz;
   std::vector<float> _vertex_normals;
   std::vector<float> _face_normals;
-  std::vector<size_t> _count;
+  std::vector<std::size_t> _count;
 
   GLuint init_vbo(const std::vector<float> &vertices);
-  GLuint init_vbo(size_t bytes, bool dynamic);
+  GLuint init_vbo(std::size_t bytes, bool dynamic);
   GLuint init_ebo(const std::vector<unsigned int> &indices);
   GLuint init_vao(GLuint xz_vbo, GLuint y_vbo, GLuint normal_vbo, GLuint ebo, const std::vector<float> &vertices);
 

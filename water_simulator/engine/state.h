@@ -4,11 +4,11 @@
 namespace water_simulator::engine {
 class State {
 public:
-  State(size_t spheres, size_t n, size_t m, float spacing, float water_height, std::vector<float> sphere_radii,
-        std::vector<float> sphere_densities);
+  State(std::size_t spheres, std::size_t n, std::size_t m, float spacing, float water_height,
+        std::vector<float> sphere_radii, std::vector<float> sphere_densities);
 
-  size_t _n;
-  size_t _m;
+  std::size_t _n;
+  std::size_t _m;
   float _spacing;
 
   std::vector<float> _sphere_centers;

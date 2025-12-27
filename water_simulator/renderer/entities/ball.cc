@@ -80,8 +80,8 @@ Ball::Ball()
   BallData mesh_data = create_ball_mesh();
 
   std::vector<float> interleaved(mesh_data.vertices.size() + mesh_data.normals.size());
-  size_t dst = 0;
-  for (size_t i = 0; i < mesh_data.vertices.size(); i += 3) {
+  std::size_t dst = 0;
+  for (std::size_t i = 0; i < mesh_data.vertices.size(); i += 3) {
     interleaved[dst + 0] = static_cast<float>(mesh_data.vertices[i]);
     interleaved[dst + 1] = static_cast<float>(mesh_data.vertices[i + 1]);
     interleaved[dst + 2] = static_cast<float>(mesh_data.vertices[i + 2]);

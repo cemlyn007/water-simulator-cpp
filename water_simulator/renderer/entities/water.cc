@@ -28,8 +28,8 @@ WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z, double
   vertices.reserve(total_vertices);
   normals.reserve(total_vertices);
   indices.reserve(n_cells_x * n_cells_z * 6);
-  for (size_t x = 0; x < vertices_x; ++x) {
-    for (size_t z = 0; z < vertices_z; ++z) {
+  for (std::size_t x = 0; x < vertices_x; ++x) {
+    for (std::size_t z = 0; z < vertices_z; ++z) {
       vertices.push_back(x * cell_size);
       vertices.push_back(z * cell_size);
       normals.push_back(0.0f);
@@ -55,7 +55,7 @@ WaterData grid_vertices_normals_and_indices(int n_cells_x, int n_cells_z, double
   return {vertices, normals, indices};
 }
 
-Water::Water(size_t resolution, float length, float xz_offset)
+Water::Water(std::size_t resolution, float length, float xz_offset)
     : _resolution(resolution), _shader(read_file("water_simulator/renderer/shaders/basic_lighting.vs"),
                                        read_file("water_simulator/renderer/shaders/basic_lighting.fs")),
       _xz_vbo(0), _y_vbo(0), _normal_vbo(0), _vao(0), _ebo(0), _vertex_normals(3 * _resolution * _resolution),
@@ -72,10 +72,10 @@ Water::Water(size_t resolution, float length, float xz_offset)
   _indices = mesh_data.indices;
   glBindVertexArray(0);
 
-  size_t max_face_index = (_resolution - 1) * (_resolution - 1) * 2;
-  for (size_t face_index = 0; face_index < max_face_index; ++face_index) {
-    for (size_t index = 0; index < 3; ++index) {
-      const size_t vertex_index = _indices[face_index * 3 + index];
+  std::size_t max_face_index = (_resolution - 1) * (_resolution - 1) * 2;
+  for (std::size_t face_index = 0; face_index < max_face_index; ++face_index) {
+    for (std::size_t index = 0; index < 3; ++index) {
+      const std::size_t vertex_index = _indices[face_index * 3 + index];
       ++_count[vertex_index];
     }
   }
@@ -102,7 +102,7 @@ GLuint Water::init_vbo(const std::vector<float> &vertices) {
   return vbo;
 }
 
-GLuint Water::init_vbo(size_t bytes, bool dynamic) {
+GLuint Water::init_vbo(std::size_t bytes, bool dynamic) {
   GLuint vbo;
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);

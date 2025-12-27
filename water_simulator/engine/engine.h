@@ -6,10 +6,10 @@ namespace water_simulator::engine {
 
 void step(State &state);
 
-std::optional<std::pair<size_t, float>> raycast(const std::vector<float> &sphere_centers,
-                                                const std::vector<float> &sphere_radii,
-                                                const std::array<float, 3> &ray_start,
-                                                const std::array<float, 3> &ray_direction, const float wall_size,
-                                                const float wall_thickness, const float wall_height);
+std::optional<std::pair<std::size_t, float>> raycast(const std::vector<float> &sphere_centers,
+                                                     const std::vector<float> &sphere_radii,
+                                                     const std::array<float, 3> &ray_start,
+                                                     const std::array<float, 3> &ray_direction, const float wall_size,
+                                                     const float wall_thickness, const float wall_height);
 
 } // namespace water_simulator::engine

@@ -2,7 +2,7 @@
 Originally copied from https://github.com/bazelbuild/bazel-central-registry/issues/1305.
 """
 
-load("@rules_cc//cc:defs.bzl", "cc_library", "objc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 # ===== win32 =====
 
@@ -80,16 +80,43 @@ DARWIN_HDRS = [
     "src/cocoa_time.h",
 ]
 
-DARWIN_SRCS = [
+DARWIN_C_SRCS = [
     "src/glx_context.c",
     "src/posix_module.c",
     "src/cocoa_time.c",
     "src/posix_thread.c",
+]
+
+DARWIN_OBJC_SRCS = [
     "src/cocoa_init.m",
     "src/cocoa_joystick.m",
     "src/cocoa_monitor.m",
     "src/cocoa_window.m",
     "src/nsgl_context.m",
+]
+
+HEADERS_IN_SRC = [
+    "platform.h",
+    "internal.h",
+    "mappings.h",
+    "xkb_unicode.h",
+    "null_platform.h",
+    "null_joystick.h",
+    "cocoa_joystick.h",
+    "cocoa_platform.h",
+    "posix_thread.h",
+    "wl_platform.h",
+    "cocoa_time.h",
+]
+
+[
+    genrule(
+        name = "rename_" + src.split("/")[-1].replace(".m", ""),
+        srcs = [src],
+        outs = [src.replace(".m", ".c")],
+        cmd = "sed " + " ".join(["-e 's|#include \"{}\"|#include \"src/{}\"|g'".format(h, h) for h in HEADERS_IN_SRC]) + " $< > $@",
+    )
+    for src in DARWIN_OBJC_SRCS
 ]
 
 DARWIN_LINKOPTS = [
@@ -152,11 +179,15 @@ cc_library(
     }),
 )
 
-objc_library(
+cc_library(
     name = "glfw_src_darwin",
-    srcs = COMMON_SRCS + DARWIN_SRCS,
+    srcs = COMMON_SRCS + DARWIN_C_SRCS + [src.replace(".m", ".c") for src in DARWIN_OBJC_SRCS],
     hdrs = COMMON_HDRS + DARWIN_HDRS,
-    copts = ["-fno-objc-arc"],
+    copts = [
+        "-fno-objc-arc",
+        "-x",
+        "objective-c",
+    ],
     defines = DARWIN_DEFINES + ["GLFW_INVALID_CODEPOINT"],
 )
 

@@ -32,7 +32,7 @@ private:
   GLuint _vbo;
   GLuint _vao;
   GLuint _ebo;
-  size_t _indices;
+  std::size_t _indices;
 
   GLuint init_vbo(const std::vector<float> &vertices);
   GLuint init_ebo(const std::vector<unsigned int> &indices);
