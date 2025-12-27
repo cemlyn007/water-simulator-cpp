@@ -3,18 +3,54 @@
 #include "water_simulator/renderer/algebra.h"
 #include "water_simulator/renderer/renderer.h"
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
+#include <string>
+#include <vector>
 
 using namespace std::chrono_literals;
 
 using namespace water_simulator;
 
-constexpr std::size_t RESOLUTION = 101;
-constexpr float SPACING = 0.02;
-constexpr float WALL_THICKNESS = 0.1;
-constexpr float WALL_HEIGHT = 1.25;
+struct Config {
+  std::size_t resolution = 101;
+  float spacing = 0.02f;
+  float wall_thickness = 0.1f;
+  float wall_height = 1.25f;
+};
+
+Config parse_args(int argc, char *argv[]) {
+  Config config;
+  std::vector<std::string> args(argv + 1, argv + argc);
+  for (size_t i = 0; i < args.size(); ++i) {
+    if (args[i] == "--resolution" && i + 1 < args.size()) {
+      config.resolution = std::stoul(args[++i]);
+    } else if (args[i] == "--spacing" && i + 1 < args.size()) {
+      config.spacing = std::stof(args[++i]);
+    } else if (args[i] == "--wall-thickness" && i + 1 < args.size()) {
+      config.wall_thickness = std::stof(args[++i]);
+    } else if (args[i] == "--wall-height" && i + 1 < args.size()) {
+      config.wall_height = std::stof(args[++i]);
+    } else if (args[i] == "--help" || args[i] == "-h") {
+      std::cout << "Usage: " << argv[0] << " [options]\n"
+                << "Options:\n"
+                << "  --resolution <int>       Grid resolution (default: 101)\n"
+                << "  --spacing <float>        Grid spacing (default: 0.02)\n"
+                << "  --wall-thickness <float> Wall thickness (default: 0.1)\n"
+                << "  --wall-height <float>    Wall height (default: 1.25)\n";
+      std::exit(0);
+    }
+  }
+  return config;
+}
 
 int main(int argc, char *argv[]) {
+  Config config = parse_args(argc, argv);
+  const auto RESOLUTION = config.resolution;
+  const auto SPACING = config.spacing;
+  const auto WALL_THICKNESS = config.wall_thickness;
+  const auto WALL_HEIGHT = config.wall_height;
+
   renderer::init();
 
   engine::State state(3, RESOLUTION, RESOLUTION, SPACING, 0.8, {0.2, 0.3, 0.25}, {2.0, 0.7, 0.2});
